@@ -309,11 +309,25 @@ public final class PoliceEvents {
     @SubscribeEvent
     public static void onPrisonerDoorInteract(PlayerInteractEvent.RightClickBlock event) {
         if (!(event.getEntity() instanceof ServerPlayer player)) return;
-        if (!PoliceData.get(player.getServer()).isJailed(player.getUUID())) return;
+        PoliceData data = PoliceData.get(player.getServer());
+        if (!data.isJailed(player.getUUID())) return;
         var block = event.getLevel().getBlockState(event.getPos()).getBlock();
-        if (block instanceof DoorBlock || block instanceof TrapDoorBlock || block instanceof FenceGateBlock) {
-            event.setCanceled(true);
-            player.displayClientMessage(Component.literal("§cDu kan ikke åpne dører eller porter mens du sitter i fengsel."), true);
+        if (block instanceof DoorBlock) {
+            if (data.isConfiguredCellDoor(player.level().dimension(), event.getPos())) {
+                if (!data.canUseCellDoor(player.getUUID(), player.level().dimension(), event.getPos())) {
+                    event.setCanceled(true);
+                    player.displayClientMessage(Component.literal(data.isNightLockdown()
+                        ? "§cCellen er låst for natten." : "§cDette er ikke din celle."), true);
+                }
+            } else if (data.isNightLockdown()) {
+                event.setCanceled(true);
+                player.displayClientMessage(Component.literal("§cDu kan ikke åpne dører under nattinnlåsing."), true);
+            }
+        } else if (block instanceof TrapDoorBlock || block instanceof FenceGateBlock) {
+            if (data.isNightLockdown()) {
+                event.setCanceled(true);
+                player.displayClientMessage(Component.literal("§cDu kan ikke åpne dører eller porter under nattinnlåsing."), true);
+            }
         }
     }
 
