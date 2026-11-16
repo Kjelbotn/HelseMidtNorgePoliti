@@ -27,6 +27,23 @@ public final class PoliceData extends SavedData {
     private double jailX, jailY, jailZ;
     private float jailYaw, jailPitch;
     private boolean jailConfigured;
+    private final Map<Integer, JailCell> cells = new HashMap<>();
+    private String jailAreaDimension = "";
+    private int jailAreaMinX, jailAreaMinY, jailAreaMinZ, jailAreaMaxX, jailAreaMaxY, jailAreaMaxZ;
+    private boolean jailAreaConfigured;
+    private boolean nightLockdown;
+    private long lastScheduleTick = Long.MIN_VALUE;
+    public static final class JailCell {
+        public String dimension = "";
+        public double spawnX, spawnY, spawnZ;
+        public float yaw, pitch;
+        public boolean spawnConfigured;
+        public String doorDimension = "";
+        public int doorX, doorY, doorZ;
+        public boolean doorConfigured;
+        public int minX, minY, minZ, maxX, maxY, maxZ;
+        public boolean areaConfigured;
+    }
 
     public record RankEntry(String name, PoliceRank rank) {}
     public record PrisonerInfo(String name, String reason, long remaining) {}
@@ -70,6 +87,23 @@ public final class PoliceData extends SavedData {
         data.jailZ = tag.getDouble("JailZ");
         data.jailYaw = tag.getFloat("JailYaw");
         data.jailPitch = tag.getFloat("JailPitch");
+        data.jailAreaConfigured = tag.getBoolean("JailAreaConfigured");
+        data.jailAreaDimension = tag.getString("JailAreaDimension");
+        data.jailAreaMinX=tag.getInt("JailAreaMinX"); data.jailAreaMinY=tag.getInt("JailAreaMinY"); data.jailAreaMinZ=tag.getInt("JailAreaMinZ");
+        data.jailAreaMaxX=tag.getInt("JailAreaMaxX"); data.jailAreaMaxY=tag.getInt("JailAreaMaxY"); data.jailAreaMaxZ=tag.getInt("JailAreaMaxZ");
+        data.nightLockdown = tag.getBoolean("NightLockdown");
+        ListTag cellList = tag.getList("Cells", 10);
+        for (int i=0; i<cellList.size(); i++) {
+            CompoundTag c=cellList.getCompound(i); int id=c.getInt("Id");
+            if (id<1 || id>6) continue;
+            JailCell cell=new JailCell();
+            cell.dimension=c.getString("Dimension");
+            cell.spawnX=c.getDouble("SpawnX"); cell.spawnY=c.getDouble("SpawnY"); cell.spawnZ=c.getDouble("SpawnZ");
+            cell.yaw=c.getFloat("Yaw"); cell.pitch=c.getFloat("Pitch"); cell.spawnConfigured=c.getBoolean("SpawnConfigured");
+            cell.doorDimension=c.getString("DoorDimension"); cell.doorX=c.getInt("DoorX"); cell.doorY=c.getInt("DoorY"); cell.doorZ=c.getInt("DoorZ"); cell.doorConfigured=c.getBoolean("DoorConfigured");
+            cell.minX=c.getInt("MinX"); cell.minY=c.getInt("MinY"); cell.minZ=c.getInt("MinZ"); cell.maxX=c.getInt("MaxX"); cell.maxY=c.getInt("MaxY"); cell.maxZ=c.getInt("MaxZ"); cell.areaConfigured=c.getBoolean("AreaConfigured");
+            data.cells.put(id,cell);
+        }
         return data;
     }
 
@@ -109,6 +143,20 @@ public final class PoliceData extends SavedData {
         tag.putDouble("JailZ", jailZ);
         tag.putFloat("JailYaw", jailYaw);
         tag.putFloat("JailPitch", jailPitch);
+        tag.putBoolean("JailAreaConfigured",jailAreaConfigured); tag.putString("JailAreaDimension",jailAreaDimension);
+        tag.putInt("JailAreaMinX",jailAreaMinX); tag.putInt("JailAreaMinY",jailAreaMinY); tag.putInt("JailAreaMinZ",jailAreaMinZ);
+        tag.putInt("JailAreaMaxX",jailAreaMaxX); tag.putInt("JailAreaMaxY",jailAreaMaxY); tag.putInt("JailAreaMaxZ",jailAreaMaxZ);
+        tag.putBoolean("NightLockdown",nightLockdown);
+        ListTag cellList=new ListTag();
+        cells.forEach((id,c)->{
+            CompoundTag entry=new CompoundTag(); entry.putInt("Id",id); entry.putString("Dimension",c.dimension);
+            entry.putDouble("SpawnX",c.spawnX); entry.putDouble("SpawnY",c.spawnY); entry.putDouble("SpawnZ",c.spawnZ);
+            entry.putFloat("Yaw",c.yaw); entry.putFloat("Pitch",c.pitch); entry.putBoolean("SpawnConfigured",c.spawnConfigured);
+            entry.putString("DoorDimension",c.doorDimension); entry.putInt("DoorX",c.doorX); entry.putInt("DoorY",c.doorY); entry.putInt("DoorZ",c.doorZ); entry.putBoolean("DoorConfigured",c.doorConfigured);
+            entry.putInt("MinX",c.minX); entry.putInt("MinY",c.minY); entry.putInt("MinZ",c.minZ); entry.putInt("MaxX",c.maxX); entry.putInt("MaxY",c.maxY); entry.putInt("MaxZ",c.maxZ); entry.putBoolean("AreaConfigured",c.areaConfigured);
+            cellList.add(entry);
+        });
+        tag.put("Cells",cellList);
         return tag;
     }
 
