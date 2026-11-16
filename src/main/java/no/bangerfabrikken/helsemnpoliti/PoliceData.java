@@ -175,9 +175,17 @@ public final class PoliceData extends SavedData {
     public void jail(ServerPlayer player, int minutes, String reason, String officer) {
         long releaseAt = System.currentTimeMillis() + minutes * 60_000L;
         String returnDimension = player.level().dimension().location().toString();
-        prisoners.put(player.getUUID(), new Prisoner(player.getGameProfile().getName(), reason, officer, releaseAt,
+        String prisonerName = player.getGameProfile().getName();
+        prisoners.put(player.getUUID(), new Prisoner(prisonerName, reason, officer, releaseAt,
             returnDimension, player.getX(), player.getY(), player.getZ(), player.getYRot(), player.getXRot()));
         setDirty();
+
+        Component announcement = Component.empty()
+            .append(Component.literal("[HMN Fengsel] ").withStyle(ChatFormatting.BLUE, ChatFormatting.BOLD))
+            .append(Component.literal(prisonerName).withStyle(ChatFormatting.AQUA))
+            .append(Component.literal(" ble satt i fengsel. Kom gjerne på besøk!").withStyle(ChatFormatting.GRAY));
+        player.getServer().getPlayerList().broadcastSystemMessage(announcement, false);
+
         enforce(player);
 
         player.sendSystemMessage(Component.literal("§c§lDU ER FENGSLET"));
