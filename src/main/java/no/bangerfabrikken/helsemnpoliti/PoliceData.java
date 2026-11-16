@@ -32,7 +32,7 @@ public final class PoliceData extends SavedData {
     public record PrisonerInfo(String name, String reason, long remaining) {}
     private record Prisoner(String name, String reason, String officer, long releaseAt,
                             String returnDimension, double returnX, double returnY, double returnZ,
-                            float returnYaw, float returnPitch) {
+                            float returnYaw, float returnPitch, int cellId) {
         long remainingMillis() { return Math.max(0L, releaseAt - System.currentTimeMillis()); }
         long remainingMinutes() { return (remainingMillis() + 59_999L) / 60_000L; }
     }
@@ -60,7 +60,7 @@ public final class PoliceData extends SavedData {
                 data.prisoners.put(id, new Prisoner(entry.getString("Name"), entry.getString("Reason"),
                     entry.getString("Officer"), entry.getLong("ReleaseAt"),
                     entry.getString("ReturnDimension"), entry.getDouble("ReturnX"), entry.getDouble("ReturnY"),
-                    entry.getDouble("ReturnZ"), entry.getFloat("ReturnYaw"), entry.getFloat("ReturnPitch")));
+                    entry.getDouble("ReturnZ"), entry.getFloat("ReturnYaw"), entry.getFloat("ReturnPitch"), entry.getInt("CellId")));
             } catch (RuntimeException ignored) {}
         }
         data.jailConfigured = tag.getBoolean("JailConfigured");
@@ -98,6 +98,7 @@ public final class PoliceData extends SavedData {
             entry.putDouble("ReturnZ", prisoner.returnZ());
             entry.putFloat("ReturnYaw", prisoner.returnYaw());
             entry.putFloat("ReturnPitch", prisoner.returnPitch());
+            entry.putInt("CellId", prisoner.cellId());
             jailList.add(entry);
         });
         tag.put("Prisoners", jailList);
@@ -142,6 +143,79 @@ public final class PoliceData extends SavedData {
         return result;
     }
 
+    public JailCell getCell(int id) { return cells.computeIfAbsent(id, ignored -> new JailCell()); }
+    public boolean isCellConfigured(int id) {
+        JailCell c = cells.get(id);
+        return c != null && c.spawnConfigured && c.areaConfigured && c.doorConfigured;
+    }
+    public boolean isCellOccupied(int id) {
+        return prisoners.values().stream().anyMatch(p -> p.cellId() == id);
+    }
+    public int getCellId(UUID player) {
+        Prisoner p = prisoners.get(player);
+        return p == null ? 0 : p.cellId();
+    }
+    public void setCellSpawn(int id, ServerPlayer player) {
+        JailCell c = getCell(id);
+        c.dimension = player.level().dimension().location().toString();
+        c.spawnX = player.getX(); c.spawnY = player.getY(); c.spawnZ = player.getZ();
+        c.yaw = player.getYRot(); c.pitch = player.getXRot(); c.spawnConfigured = true; setDirty();
+    }
+    public void setCellDoor(int id, ServerLevel level, net.minecraft.core.BlockPos pos) {
+        JailCell c = getCell(id);
+        c.doorDimension = level.dimension().location().toString();
+        c.doorX = pos.getX(); c.doorY = pos.getY(); c.doorZ = pos.getZ();
+        c.doorConfigured = true; setDirty();
+    }
+    public void setCellCorner(int id, ServerPlayer player, boolean first) {
+        JailCell c = getCell(id);
+        if (!c.areaConfigured) {
+            c.minX = c.maxX = player.blockPosition().getX();
+            c.minY = c.maxY = player.blockPosition().getY();
+            c.minZ = c.maxZ = player.blockPosition().getZ();
+            c.dimension = player.level().dimension().location().toString();
+            c.areaConfigured = true;
+        }
+        int x = player.blockPosition().getX(), y = player.blockPosition().getY(), z = player.blockPosition().getZ();
+        if (first) { c.minX=x; c.minY=y; c.minZ=z; }
+        else { c.maxX=x; c.maxY=y; c.maxZ=z; }
+        c.areaConfigured = true; setDirty();
+    }
+    public void clearCell(int id) { cells.remove(id); setDirty(); }
+    public void setJailAreaCorner(ServerPlayer player, boolean first) {
+        int x=player.blockPosition().getX(), y=player.blockPosition().getY(), z=player.blockPosition().getZ();
+        if (first || !jailAreaConfigured) {
+            jailAreaMinX=jailAreaMaxX=x; jailAreaMinY=jailAreaMaxY=y; jailAreaMinZ=jailAreaMaxZ=z;
+            jailAreaDimension=player.level().dimension().location().toString(); jailAreaConfigured=true;
+        } else {
+            jailAreaMaxX=x; jailAreaMaxY=y; jailAreaMaxZ=z;
+        }
+        if (jailAreaMinX > jailAreaMaxX) { int t=jailAreaMinX; jailAreaMinX=jailAreaMaxX; jailAreaMaxX=t; }
+        if (jailAreaMinY > jailAreaMaxY) { int t=jailAreaMinY; jailAreaMinY=jailAreaMaxY; jailAreaMaxY=t; }
+        if (jailAreaMinZ > jailAreaMaxZ) { int t=jailAreaMinZ; jailAreaMinZ=jailAreaMaxZ; jailAreaMaxZ=t; }
+        setDirty();
+    }
+    public boolean hasJailArea() { return jailAreaConfigured; }
+    public boolean isInsideJailArea(ServerPlayer player) {
+        return jailAreaConfigured && player.level().dimension().location().toString().equals(jailAreaDimension)
+            && player.getX() >= jailAreaMinX && player.getX() <= jailAreaMaxX + 1
+            && player.getY() >= jailAreaMinY && player.getY() <= jailAreaMaxY + 1
+            && player.getZ() >= jailAreaMinZ && player.getZ() <= jailAreaMaxZ + 1;
+    }
+    public boolean isNightLockdown() { return nightLockdown; }
+    public boolean isConfiguredCellDoor(net.minecraft.resources.ResourceKey<Level> dimension, net.minecraft.core.BlockPos pos) {
+        return cells.values().stream().anyMatch(c -> c.doorConfigured
+            && c.doorDimension.equals(dimension.location().toString())
+            && c.doorX == pos.getX() && c.doorY == pos.getY() && c.doorZ == pos.getZ());
+    }
+    public boolean canUseCellDoor(UUID player, net.minecraft.resources.ResourceKey<Level> dimension, net.minecraft.core.BlockPos pos) {
+        if (nightLockdown) return false;
+        int id = getCellId(player);
+        JailCell c = cells.get(id);
+        return c != null && c.doorConfigured && c.doorDimension.equals(dimension.location().toString())
+            && c.doorX == pos.getX() && c.doorY == pos.getY() && c.doorZ == pos.getZ();
+    }
+
     public void setJail(ServerPlayer player) {
         jailDimension = player.level().dimension().location().toString();
         jailX = player.getX(); jailY = player.getY(); jailZ = player.getZ();
@@ -162,6 +236,12 @@ public final class PoliceData extends SavedData {
         if (player.serverLevel().getGameTime() % 20L == 0L) {
             player.displayClientMessage(countdownComponent(prisoner), true);
         }
+        updateDayNightSchedule(player.getServer());
+        if (jailAreaConfigured && !isInsideJailArea(player)) {
+            teleportToCell(player);
+            player.sendSystemMessage(Component.literal("§cDu kan ikke forlate fengselsområdet."));
+        }
+        if (!jailConfigured && getCellId(player.getUUID()) == 0) return;
         if (!jailConfigured) return;
         ResourceKey<Level> key = ResourceKey.create(Registries.DIMENSION, ResourceLocation.parse(jailDimension));
         ServerLevel jailLevel = player.getServer().getLevel(key);
@@ -176,8 +256,12 @@ public final class PoliceData extends SavedData {
         long releaseAt = System.currentTimeMillis() + minutes * 60_000L;
         String returnDimension = player.level().dimension().location().toString();
         String prisonerName = player.getGameProfile().getName();
+        int cellId = 0;
+        for (int id = 1; id <= 6; id++) {
+            if (isCellConfigured(id) && !isCellOccupied(id)) { cellId = id; break; }
+        }
         prisoners.put(player.getUUID(), new Prisoner(prisonerName, reason, officer, releaseAt,
-            returnDimension, player.getX(), player.getY(), player.getZ(), player.getYRot(), player.getXRot()));
+            returnDimension, player.getX(), player.getY(), player.getZ(), player.getYRot(), player.getXRot(), cellId));
         setDirty();
 
         Component announcement = Component.empty()
@@ -187,6 +271,8 @@ public final class PoliceData extends SavedData {
         player.getServer().getPlayerList().broadcastSystemMessage(announcement, false);
 
         enforce(player);
+        if (cellId == 0) player.sendSystemMessage(Component.literal("§eIngen ledig, fullstendig konfigurert celle. Du er satt i midlertidig fengselsplass."));
+        else player.sendSystemMessage(Component.literal("§7Du er tildelt celle §e" + cellId + "§7."));
 
         player.sendSystemMessage(Component.literal("§c§lDU ER FENGSLET"));
         player.sendSystemMessage(Component.literal("§fGrunn: §e" + reason));
@@ -260,7 +346,64 @@ public final class PoliceData extends SavedData {
         player.sendSystemMessage(Component.literal(message));
     }
 
+    private void updateDayNightSchedule(MinecraftServer server) {
+        long tick = server.overworld().getGameTime();
+        if (tick == lastScheduleTick) return;
+        lastScheduleTick = tick;
+        long time = Math.floorMod(server.overworld().getDayTime(), 24000L);
+        boolean shouldLock = nightLockdown ? !(time >= 23000L || time < 12000L) : time >= 12000L && time < 23000L;
+        if (shouldLock == nightLockdown) return;
+        nightLockdown = shouldLock;
+        setDirty();
+        for (ServerPlayer prisoner : server.getPlayerList().getPlayers()) {
+            if (!prisoners.containsKey(prisoner.getUUID())) continue;
+            if (nightLockdown) {
+                teleportToCell(prisoner);
+                prisoner.sendSystemMessage(Component.literal("§8§lSOLNEDGANG §7- Du er låst inne for natten."));
+            } else {
+                prisoner.sendSystemMessage(Component.literal("§e§lSOLOPPGANG §7- Fengselet er åpent. Du kan bevege deg fritt."));
+            }
+        }
+        if (nightLockdown) closeAllCellDoors(server);
+    }
+
+    private void closeAllCellDoors(MinecraftServer server) {
+        for (JailCell c : cells.values()) {
+            if (!c.doorConfigured) continue;
+            ResourceKey<Level> key = ResourceKey.create(Registries.DIMENSION, ResourceLocation.parse(c.doorDimension));
+            ServerLevel level = server.getLevel(key);
+            if (level == null) continue;
+            net.minecraft.core.BlockPos pos = new net.minecraft.core.BlockPos(c.doorX, c.doorY, c.doorZ);
+            var state = level.getBlockState(pos);
+            if (state.hasProperty(net.minecraft.world.level.block.state.properties.BlockStateProperties.OPEN)
+                && state.getValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.OPEN)) {
+                level.setBlock(pos, state.setValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.OPEN, false), 3);
+            }
+        }
+    }
+
+    private void teleportToCell(ServerPlayer player) {
+        int id = getCellId(player.getUUID());
+        JailCell c = cells.get(id);
+        if (c != null && c.spawnConfigured) {
+            ResourceKey<Level> key = ResourceKey.create(Registries.DIMENSION, ResourceLocation.parse(c.dimension));
+            ServerLevel level = player.getServer().getLevel(key);
+            if (level != null) player.teleportTo(level, c.spawnX, c.spawnY, c.spawnZ, Set.of(), c.yaw, c.pitch);
+            return;
+        }
+        enforce(player);
+    }
+
     private void enforce(ServerPlayer player) {
+        int id = getCellId(player.getUUID());
+        if (nightLockdown && id > 0) {
+            JailCell c = cells.get(id);
+            if (c != null && c.areaConfigured && player.level().dimension().location().toString().equals(c.dimension)) {
+                if (player.getX() < c.minX || player.getX() > c.maxX + 1 || player.getY() < c.minY || player.getY() > c.maxY + 1 || player.getZ() < c.minZ || player.getZ() > c.maxZ + 1) {
+                    teleportToCell(player);
+                }
+            }
+        }
         if (!jailConfigured) return;
         MinecraftServer server = player.getServer();
         ResourceKey<Level> key = ResourceKey.create(Registries.DIMENSION, ResourceLocation.parse(jailDimension));
