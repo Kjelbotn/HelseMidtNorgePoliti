@@ -3,7 +3,6 @@ package no.bangerfabrikken.helsemnpoliti;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
-import net.minecraft.nbt.StringTag;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -151,10 +150,7 @@ public final class PoliceData extends SavedData {
         prisoners.put(player.getUUID(), new Prisoner(player.getGameProfile().getName(), reason, officer, releaseAt));
         setDirty();
         enforce(player);
-        player.sendSystemMessage(Component.literal("§c§lDU ER FENGSLET
-§fGrunn: §e" + reason + "
-§fTid: §e" + minutes + " minutter
-§fArrestert av: §e" + officer));
+        player.sendSystemMessage(Component.literal("§c§lDU ER FENGSLET\\n§fGrunn: §e" + reason + "\\n§fTid: §e" + minutes + " minutter\\n§fArrestert av: §e" + officer));
     }
 
     public boolean release(ServerPlayer player) {
@@ -200,5 +196,4 @@ public final class PoliceData extends SavedData {
             player.setXRot(jailPitch);
         }
     }
-}
 }
