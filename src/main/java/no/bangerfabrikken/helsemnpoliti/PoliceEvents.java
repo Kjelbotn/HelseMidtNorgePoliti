@@ -11,7 +11,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
-import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
+import net.neoforged.neoforge.event.player.PlayerInteractEvent;
 import net.minecraft.world.level.block.DoorBlock;
 import net.minecraft.world.level.block.TrapDoorBlock;
 import net.minecraft.world.level.block.FenceGateBlock;
@@ -49,6 +49,10 @@ public final class PoliceEvents {
                             data.refreshPoliceTag(target);
                             context.getSource().sendSuccess(() -> Component.literal("§a" + target.getGameProfile().getName() + " er nå " + rank.get().displayName() + "."), true);
                             target.sendSystemMessage(Component.literal("§9[HMN Politi] §fDu er utnevnt til " + rank.get().displayName() + "."));
+                            context.getSource().getServer().getPlayerList().broadcastSystemMessage(
+                                Component.literal("§9[HMN Politi] §b" + target.getGameProfile().getName()
+                                    + " §fhar blitt forfremmet til §9" + rank.get().displayName() + "§f! Gratulerer :D"),
+                                false);
                             return Command.SINGLE_SUCCESS;
                         }))))
             .then(Commands.literal("fjern")
@@ -301,7 +305,6 @@ public final class PoliceEvents {
         if (!PoliceData.get(player.getServer()).isJailed(player.getUUID())) return;
         if (!(player.getItemInHand(event.getHand()).getItem() instanceof BlockItem)) return;
 
-        // Cancel before vanilla consumes the item stack for block placement.
         event.setCanceled(true);
         syncPrisonerInventory(player);
         player.displayClientMessage(Component.literal("§cDu kan ikke plassere blokker mens du sitter i fengsel."), true);
@@ -333,9 +336,6 @@ public final class PoliceEvents {
     }
 
     private static void syncPrisonerInventory(ServerPlayer player) {
-        // Client-side block placement prediction can make the held stack appear empty.
-        // Container id -2 addresses the player's inventory directly; send authoritative
-        // copies of both hand slots even when the server-side stack did not change.
         var inventory = player.getInventory();
         int selectedSlot = inventory.selected;
         player.connection.send(new ClientboundContainerSetSlotPacket(-2, 0, selectedSlot,
