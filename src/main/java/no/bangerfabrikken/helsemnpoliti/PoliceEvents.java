@@ -89,7 +89,7 @@ public final class PoliceEvents {
             }));
 
         dispatcher.register(Commands.literal("jail")
-            .requires(source -> PoliceData.get(context.getSource().getServer()).isPolice(context.getSource()))
+            .requires(source -> PoliceData.get(source.getServer()).isPolice(source))
             .then(Commands.argument("spiller", EntityArgument.player())
                 .then(Commands.argument("minutter", IntegerArgumentType.integer(1, 10080))
                     .then(Commands.argument("grunn", StringArgumentType.greedyString())
