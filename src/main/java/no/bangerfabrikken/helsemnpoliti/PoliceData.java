@@ -188,6 +188,9 @@ public final class PoliceData extends SavedData {
         int x = player.blockPosition().getX(), y = player.blockPosition().getY(), z = player.blockPosition().getZ();
         if (first) { c.minX=x; c.minY=y; c.minZ=z; }
         else { c.maxX=x; c.maxY=y; c.maxZ=z; }
+        c.minX = Math.min(c.minX, c.maxX); c.maxX = Math.max(c.minX, c.maxX);
+        c.minY = Math.min(c.minY, c.maxY); c.maxY = Math.max(c.minY, c.maxY);
+        c.minZ = Math.min(c.minZ, c.maxZ); c.maxZ = Math.max(c.minZ, c.maxZ);
         c.areaConfigured = true; setDirty();
     }
     public void clearCell(int id) { cells.remove(id); setDirty(); }
@@ -411,7 +414,7 @@ public final class PoliceData extends SavedData {
             if (cell != null && cell.spawnConfigured) {
                 ResourceKey<Level> cellKey = ResourceKey.create(Registries.DIMENSION, ResourceLocation.parse(cell.dimension));
                 ServerLevel cellLevel = player.getServer().getLevel(cellKey);
-                if (cellLevel != null && (player.level() != cellLevel || nightLockdown)) {
+                if (cellLevel != null && (player.level() != cellLevel || nightLockdown || (jailAreaConfigured && !isInsideJailArea(player)))) {
                     player.teleportTo(cellLevel, cell.spawnX, cell.spawnY, cell.spawnZ, Set.of(), cell.yaw, cell.pitch);
                 }
                 return;
