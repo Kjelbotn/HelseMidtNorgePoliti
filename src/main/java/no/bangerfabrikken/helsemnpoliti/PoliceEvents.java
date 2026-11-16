@@ -5,6 +5,7 @@ import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.arguments.EntityArgument;
+import net.minecraft.commands.arguments.coordinates.BlockPosArgument;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -86,6 +87,113 @@ public final class PoliceEvents {
                     }
                     return entries.size();
                 })));
+
+        dispatcher.register(Commands.literal("jailcell")
+            .requires(source -> source.hasPermission(4))
+            .then(Commands.literal("set")
+                .then(Commands.argument("celle", IntegerArgumentType.integer(1, 6))
+                    .then(Commands.literal("spawn").executes(context -> {
+                        ServerPlayer player = context.getSource().getPlayerOrException();
+                        int id = IntegerArgumentType.getInteger(context, "celle");
+                        PoliceData.get(context.getSource().getServer()).setCellSpawn(id, player);
+                        context.getSource().sendSuccess(() -> Component.literal("§aSpawn for celle " + id + " er lagret."), true);
+                        return Command.SINGLE_SUCCESS;
+                    }))
+                    .then(Commands.literal("door")
+                        .then(Commands.argument("pos", BlockPosArgument.blockPos()).executes(context -> {
+                            ServerPlayer player = context.getSource().getPlayerOrException();
+                            int id = IntegerArgumentType.getInteger(context, "celle");
+                            var pos = BlockPosArgument.getLoadedBlockPos(context, "pos");
+                            if (!(player.level().getBlockState(pos).getBlock() instanceof DoorBlock)) {
+                                context.getSource().sendFailure(Component.literal("Du må angi en vanlig dørblokk."));
+                                return 0;
+                            }
+                            PoliceData.get(context.getSource().getServer()).setCellDoor(id, player.serverLevel(), pos);
+                            context.getSource().sendSuccess(() -> Component.literal("§aDøren til celle " + id + " er registrert."), true);
+                            return Command.SINGLE_SUCCESS;
+                        })))
+                    .then(Commands.literal("pos1").executes(context -> {
+                        ServerPlayer player = context.getSource().getPlayerOrException();
+                        int id = IntegerArgumentType.getInteger(context, "celle");
+                        PoliceData.get(context.getSource().getServer()).setCellCorner(id, player, true);
+                        context.getSource().sendSuccess(() -> Component.literal("§aFørste hjørne for celle " + id + " er lagret."), true);
+                        return Command.SINGLE_SUCCESS;
+                    }))
+                    .then(Commands.literal("pos2").executes(context -> {
+                        ServerPlayer player = context.getSource().getPlayerOrException();
+                        int id = IntegerArgumentType.getInteger(context, "celle");
+                        PoliceData.get(context.getSource().getServer()).setCellCorner(id, player, false);
+                        context.getSource().sendSuccess(() -> Component.literal("§aAndre hjørne for celle " + id + " er lagret."), true);
+                        return Command.SINGLE_SUCCESS;
+                    }))))
+            .then(Commands.literal("info")
+                .then(Commands.argument("celle", IntegerArgumentType.integer(1, 6)).executes(context -> {
+                    int id = IntegerArgumentType.getInteger(context, "celle");
+                    PoliceData data = PoliceData.get(context.getSource().getServer());
+                    var c = data.getCell(id);
+                    context.getSource().sendSuccess(() -> Component.literal("§9Celle " + id + " §7- Spawn: " + (c.spawnConfigured ? "OK" : "mangler")
+                        + ", dør: " + (c.doorConfigured ? "OK" : "mangler") + ", område: " + (c.areaConfigured ? "OK" : "mangler")
+                        + ", status: " + (data.isCellOccupied(id) ? "opptatt" : "ledig")), false);
+                    return Command.SINGLE_SUCCESS;
+                })))
+            .then(Commands.literal("list").executes(context -> {
+                PoliceData data = PoliceData.get(context.getSource().getServer());
+                for (int id = 1; id <= 6; id++) {
+                    var c = data.getCell(id);
+                    context.getSource().sendSuccess(() -> Component.literal("§9Celle " + id + " §7- " +
+                        (data.isCellConfigured(id) ? "konfigurert" : "ufullstendig") + " / " +
+                        (data.isCellOccupied(id) ? "§copptatt" : "§aledig")), false);
+                }
+                return Command.SINGLE_SUCCESS;
+            }))
+            .then(Commands.literal("assign")
+                .then(Commands.argument("spiller", EntityArgument.player())
+                    .then(Commands.argument("celle", IntegerArgumentType.integer(1, 6)).executes(context -> {
+                        ServerPlayer target = EntityArgument.getPlayer(context, "spiller");
+                        int id = IntegerArgumentType.getInteger(context, "celle");
+                        PoliceData data = PoliceData.get(context.getSource().getServer());
+                        if (!data.isJailed(target.getUUID())) {
+                            context.getSource().sendFailure(Component.literal("Spilleren sitter ikke i fengsel."));
+                            return 0;
+                        }
+                        if (!data.isCellConfigured(id) || data.isCellOccupied(id)) {
+                            context.getSource().sendFailure(Component.literal("Cellen er ikke komplett konfigurert eller er opptatt."));
+                            return 0;
+                        }
+                        if (!data.assignCell(target, id)) {
+                            context.getSource().sendFailure(Component.literal("Kunne ikke tildele cellen."));
+                            return 0;
+                        }
+                        context.getSource().sendSuccess(() -> Component.literal("§a" + target.getGameProfile().getName() + " er tildelt celle " + id + "."), true);
+                        return Command.SINGLE_SUCCESS;
+                    }))))
+            .then(Commands.literal("clear")
+                .then(Commands.argument("celle", IntegerArgumentType.integer(1, 6)).executes(context -> {
+                    int id = IntegerArgumentType.getInteger(context, "celle");
+                    PoliceData data = PoliceData.get(context.getSource().getServer());
+                    if (data.isCellOccupied(id)) {
+                        context.getSource().sendFailure(Component.literal("Cellen er opptatt og kan ikke nullstilles."));
+                        return 0;
+                    }
+                    data.clearCell(id);
+                    context.getSource().sendSuccess(() -> Component.literal("§aCelle " + id + " er nullstilt."), true);
+                    return Command.SINGLE_SUCCESS;
+                }))));
+
+        dispatcher.register(Commands.literal("jailarea")
+            .requires(source -> source.hasPermission(4))
+            .then(Commands.literal("pos1").executes(context -> {
+                ServerPlayer player = context.getSource().getPlayerOrException();
+                PoliceData.get(context.getSource().getServer()).setJailAreaCorner(player, true);
+                context.getSource().sendSuccess(() -> Component.literal("§aFengselets første ytterhjørne er lagret."), true);
+                return Command.SINGLE_SUCCESS;
+            }))
+            .then(Commands.literal("pos2").executes(context -> {
+                ServerPlayer player = context.getSource().getPlayerOrException();
+                PoliceData.get(context.getSource().getServer()).setJailAreaCorner(player, false);
+                context.getSource().sendSuccess(() -> Component.literal("§aFengselets andre ytterhjørne er lagret."), true);
+                return Command.SINGLE_SUCCESS;
+            })));
 
         dispatcher.register(Commands.literal("jailset")
             .requires(source -> source.hasPermission(4))
