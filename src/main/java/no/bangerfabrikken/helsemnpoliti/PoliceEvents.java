@@ -15,6 +15,7 @@ import net.minecraft.world.level.block.DoorBlock;
 import net.minecraft.world.level.block.TrapDoorBlock;
 import net.minecraft.world.level.block.FenceGateBlock;
 import net.minecraft.world.item.BlockItem;
+import net.minecraft.network.protocol.game.ClientboundContainerSetSlotPacket;
 
 public final class PoliceEvents {
     private PoliceEvents() {}
@@ -209,10 +210,15 @@ public final class PoliceEvents {
     }
 
     private static void syncPrisonerInventory(ServerPlayer player) {
-        // The client predicts block placement and may visually consume the stack.
-        // Force a fresh authoritative inventory update after rejecting the action.
-        player.getInventory().setChanged();
-        player.containerMenu.broadcastChanges();
+        // Client-side block placement prediction can make the held stack appear empty.
+        // Container id -2 addresses the player's inventory directly; send authoritative
+        // copies of both hand slots even when the server-side stack did not change.
+        var inventory = player.getInventory();
+        int selectedSlot = inventory.selected;
+        player.connection.send(new ClientboundContainerSetSlotPacket(-2, 0, selectedSlot,
+            inventory.getItem(selectedSlot).copy()));
+        player.connection.send(new ClientboundContainerSetSlotPacket(-2, 0, 40,
+            inventory.offhand.get(0).copy()));
     }
 
     @SubscribeEvent
