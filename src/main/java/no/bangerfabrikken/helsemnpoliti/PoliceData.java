@@ -30,7 +30,9 @@ public final class PoliceData extends SavedData {
 
     public record RankEntry(String name, PoliceRank rank) {}
     public record PrisonerInfo(String name, String reason, long remaining) {}
-    private record Prisoner(String name, String reason, String officer, long releaseAt) {
+    private record Prisoner(String name, String reason, String officer, long releaseAt,
+                            String returnDimension, double returnX, double returnY, double returnZ,
+                            float returnYaw, float returnPitch) {
         long remainingMillis() { return Math.max(0L, releaseAt - System.currentTimeMillis()); }
         long remainingMinutes() { return (remainingMillis() + 59_999L) / 60_000L; }
     }
@@ -56,7 +58,9 @@ public final class PoliceData extends SavedData {
             try {
                 UUID id = UUID.fromString(entry.getString("UUID"));
                 data.prisoners.put(id, new Prisoner(entry.getString("Name"), entry.getString("Reason"),
-                    entry.getString("Officer"), entry.getLong("ReleaseAt")));
+                    entry.getString("Officer"), entry.getLong("ReleaseAt"),
+                    entry.getString("ReturnDimension"), entry.getDouble("ReturnX"), entry.getDouble("ReturnY"),
+                    entry.getDouble("ReturnZ"), entry.getFloat("ReturnYaw"), entry.getFloat("ReturnPitch")));
             } catch (RuntimeException ignored) {}
         }
         data.jailConfigured = tag.getBoolean("JailConfigured");
@@ -88,6 +92,12 @@ public final class PoliceData extends SavedData {
             entry.putString("Reason", prisoner.reason());
             entry.putString("Officer", prisoner.officer());
             entry.putLong("ReleaseAt", prisoner.releaseAt());
+            entry.putString("ReturnDimension", prisoner.returnDimension());
+            entry.putDouble("ReturnX", prisoner.returnX());
+            entry.putDouble("ReturnY", prisoner.returnY());
+            entry.putDouble("ReturnZ", prisoner.returnZ());
+            entry.putFloat("ReturnYaw", prisoner.returnYaw());
+            entry.putFloat("ReturnPitch", prisoner.returnPitch());
             jailList.add(entry);
         });
         tag.put("Prisoners", jailList);
@@ -146,9 +156,7 @@ public final class PoliceData extends SavedData {
         Prisoner prisoner = prisoners.get(player.getUUID());
         if (prisoner == null) return;
         if (prisoner.remainingMillis() <= 0) {
-            prisoners.remove(player.getUUID());
-            setDirty();
-            player.sendSystemMessage(Component.literal("§aSoningen er ferdig. Du er automatisk løslatt."));
+            releasePlayer(player, prisoner, "§aSoningen er ferdig. Du er automatisk løslatt.");
             return;
         }
         if (!jailConfigured) return;
@@ -163,7 +171,9 @@ public final class PoliceData extends SavedData {
 
     public void jail(ServerPlayer player, int minutes, String reason, String officer) {
         long releaseAt = System.currentTimeMillis() + minutes * 60_000L;
-        prisoners.put(player.getUUID(), new Prisoner(player.getGameProfile().getName(), reason, officer, releaseAt));
+        String returnDimension = player.level().dimension().location().toString();
+        prisoners.put(player.getUUID(), new Prisoner(player.getGameProfile().getName(), reason, officer, releaseAt,
+            returnDimension, player.getX(), player.getY(), player.getZ(), player.getYRot(), player.getXRot()));
         setDirty();
         enforce(player);
 
@@ -174,10 +184,9 @@ public final class PoliceData extends SavedData {
     }
 
     public boolean release(ServerPlayer player) {
-        Prisoner removed = prisoners.remove(player.getUUID());
+        Prisoner removed = prisoners.get(player.getUUID());
         if (removed == null) return false;
-        setDirty();
-        player.sendSystemMessage(Component.literal("§aDu er løslatt fra fengselet."));
+        releasePlayer(player, removed, "§aDu er løslatt fra fengselet.");
         return true;
     }
 
@@ -204,12 +213,27 @@ public final class PoliceData extends SavedData {
         Prisoner p = prisoners.get(player.getUUID());
         if (p == null) return;
         if (p.remainingMillis() <= 0) {
-            prisoners.remove(player.getUUID());
-            setDirty();
-            player.sendSystemMessage(Component.literal("§aSoningen er ferdig. Du er automatisk løslatt."));
+            releasePlayer(player, p, "§aSoningen er ferdig. Du er automatisk løslatt.");
             return;
         }
         enforce(player);
+    }
+
+    private void releasePlayer(ServerPlayer player, Prisoner prisoner, String message) {
+        prisoners.remove(player.getUUID());
+        setDirty();
+
+        if (!prisoner.returnDimension().isEmpty()) {
+            ResourceKey<Level> returnKey = ResourceKey.create(Registries.DIMENSION,
+                ResourceLocation.parse(prisoner.returnDimension()));
+            ServerLevel returnLevel = player.getServer().getLevel(returnKey);
+            if (returnLevel != null) {
+                player.teleportTo(returnLevel, prisoner.returnX(), prisoner.returnY(), prisoner.returnZ(),
+                    Set.of(), prisoner.returnYaw(), prisoner.returnPitch());
+            }
+        }
+
+        player.sendSystemMessage(Component.literal(message));
     }
 
     private void enforce(ServerPlayer player) {
