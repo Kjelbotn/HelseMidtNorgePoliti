@@ -264,17 +264,19 @@ public final class PoliceData extends SavedData {
             && player.getZ() >= jailAreaMinZ && player.getZ() <= jailAreaMaxZ + 1;
     }
     public boolean isNightLockdown() { return nightLockdown; }
+    private boolean matchesDoor(JailCell c, net.minecraft.resources.ResourceKey<Level> dimension, net.minecraft.core.BlockPos pos) {
+        if (!c.doorConfigured || !c.doorDimension.equals(dimension.location().toString())) return false;
+        return (c.doorX == pos.getX() && c.doorY == pos.getY() && c.doorZ == pos.getZ())
+            || (c.doorX == pos.getX() && c.doorY == pos.getY() + 1 && c.doorZ == pos.getZ())
+            || (c.doorX == pos.getX() && c.doorY == pos.getY() - 1 && c.doorZ == pos.getZ());
+    }
     public boolean isConfiguredCellDoor(net.minecraft.resources.ResourceKey<Level> dimension, net.minecraft.core.BlockPos pos) {
-        return cells.values().stream().anyMatch(c -> c.doorConfigured
-            && c.doorDimension.equals(dimension.location().toString())
-            && c.doorX == pos.getX() && c.doorY == pos.getY() && c.doorZ == pos.getZ());
+        return cells.values().stream().anyMatch(c -> matchesDoor(c, dimension, pos));
     }
     public boolean canUseCellDoor(UUID player, net.minecraft.resources.ResourceKey<Level> dimension, net.minecraft.core.BlockPos pos) {
         if (nightLockdown) return false;
-        int id = getCellId(player);
-        JailCell c = cells.get(id);
-        return c != null && c.doorConfigured && c.doorDimension.equals(dimension.location().toString())
-            && c.doorX == pos.getX() && c.doorY == pos.getY() && c.doorZ == pos.getZ();
+        JailCell c = cells.get(getCellId(player));
+        return c != null && matchesDoor(c, dimension, pos);
     }
 
     public void setJail(ServerPlayer player) {
@@ -298,6 +300,17 @@ public final class PoliceData extends SavedData {
             player.displayClientMessage(countdownComponent(prisoner), true);
         }
         updateDayNightSchedule(player.getServer());
+        if (nightLockdown) {
+            int cellId = getCellId(player.getUUID());
+            JailCell cell = cells.get(cellId);
+            if (cell != null && cell.areaConfigured &&
+                (!player.level().dimension().location().toString().equals(cell.dimension)
+                    || player.getX() < cell.minX || player.getX() > cell.maxX + 1
+                    || player.getY() < cell.minY || player.getY() > cell.maxY + 1
+                    || player.getZ() < cell.minZ || player.getZ() > cell.maxZ + 1)) {
+                teleportToCell(player);
+            }
+        }
         if (jailAreaConfigured && !isInsideJailArea(player)) {
             teleportToCell(player);
             player.sendSystemMessage(Component.literal("§cDu kan ikke forlate fengselsområdet."));
@@ -331,7 +344,7 @@ public final class PoliceData extends SavedData {
             .append(Component.literal(" ble satt i fengsel. Kom gjerne på besøk!").withStyle(ChatFormatting.GRAY));
         player.getServer().getPlayerList().broadcastSystemMessage(announcement, false);
 
-        if (cellId > 0) teleportToCell(player); else enforce(player);
+        if (cellId > 0) { teleportToCell(player); if (nightLockdown) closeAllCellDoors(player.getServer()); } else enforce(player);
         if (cellId == 0) player.sendSystemMessage(Component.literal("§eIngen ledig, fullstendig konfigurert celle. Du er satt i midlertidig fengselsplass."));
         else player.sendSystemMessage(Component.literal("§7Du er tildelt celle §e" + cellId + "§7."));
 
