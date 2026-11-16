@@ -9,8 +9,10 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.saveddata.SavedData;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.world.level.Level;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.network.chat.Component;
 
 import java.util.*;
 
@@ -123,6 +125,26 @@ public final class PoliceData extends SavedData {
         setDirty();
     }
     public boolean hasJail() { return jailConfigured; }
+    public boolean isJailed(UUID id) { return prisoners.containsKey(id); }
+
+    public void tickPrisoner(ServerPlayer player) {
+        Prisoner prisoner = prisoners.get(player.getUUID());
+        if (prisoner == null) return;
+        if (prisoner.remainingMillis() <= 0) {
+            prisoners.remove(player.getUUID());
+            setDirty();
+            player.sendSystemMessage(Component.literal("§aSoningen er ferdig. Du er automatisk løslatt."));
+            return;
+        }
+        if (!jailConfigured) return;
+        ResourceKey<Level> key = ResourceKey.create(Registries.DIMENSION, ResourceLocation.parse(jailDimension));
+        ServerLevel jailLevel = player.getServer().getLevel(key);
+        if (jailLevel == null) return;
+        if (player.level() != jailLevel || player.distanceToSqr(jailX, jailY, jailZ) > 100.0D) {
+            enforce(player);
+            player.sendSystemMessage(Component.literal("§cDu kan ikke forlate fengselsområdet."));
+        }
+    }
 
     public void jail(ServerPlayer player, int minutes, String reason, String officer) {
         long releaseAt = System.currentTimeMillis() + minutes * 60_000L;
@@ -167,10 +189,10 @@ public final class PoliceData extends SavedData {
     private void enforce(ServerPlayer player) {
         if (!jailConfigured) return;
         MinecraftServer server = player.getServer();
-        ServerLevel jailLevel = server.getLevel(ResourceLocation.parse(jailDimension).equals(player.level().dimension().location())
-            ? player.level().dimension() : server.levelKeys().stream()
-                .filter(key -> key.location().toString().equals(jailDimension)).findFirst().orElse(player.level().dimension()));
-        if (jailLevel != null && player.level() != jailLevel) {
+        ResourceKey<Level> key = ResourceKey.create(Registries.DIMENSION, ResourceLocation.parse(jailDimension));
+        ServerLevel jailLevel = server.getLevel(key);
+        if (jailLevel == null) return;
+        if (player.level() != jailLevel) {
             player.teleportTo(jailLevel, jailX, jailY, jailZ, Set.of(), jailYaw, jailPitch);
         } else {
             player.teleportTo(jailX, jailY, jailZ);
@@ -178,4 +200,5 @@ public final class PoliceData extends SavedData {
             player.setXRot(jailPitch);
         }
     }
+}
 }
