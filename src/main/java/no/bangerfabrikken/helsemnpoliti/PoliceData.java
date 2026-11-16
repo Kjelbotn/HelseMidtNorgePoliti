@@ -236,9 +236,10 @@ public final class PoliceData extends SavedData {
         int x = player.blockPosition().getX(), y = player.blockPosition().getY(), z = player.blockPosition().getZ();
         if (first) { c.minX=x; c.minY=y; c.minZ=z; }
         else { c.maxX=x; c.maxY=y; c.maxZ=z; }
-        c.minX = Math.min(c.minX, c.maxX); c.maxX = Math.max(c.minX, c.maxX);
-        c.minY = Math.min(c.minY, c.maxY); c.maxY = Math.max(c.minY, c.maxY);
-        c.minZ = Math.min(c.minZ, c.maxZ); c.maxZ = Math.max(c.minZ, c.maxZ);
+        int ax=c.minX, bx=c.maxX, ay=c.minY, by=c.maxY, az=c.minZ, bz=c.maxZ;
+        c.minX=Math.min(ax,bx); c.maxX=Math.max(ax,bx);
+        c.minY=Math.min(ay,by); c.maxY=Math.max(ay,by);
+        c.minZ=Math.min(az,bz); c.maxZ=Math.max(az,bz);
         c.areaConfigured = true; setDirty();
     }
     public void clearCell(int id) { cells.remove(id); setDirty(); }
@@ -283,7 +284,7 @@ public final class PoliceData extends SavedData {
         jailConfigured = true;
         setDirty();
     }
-    public boolean hasJail() { return jailConfigured; }
+    public boolean hasJail() { return jailConfigured || (jailAreaConfigured && java.util.stream.IntStream.rangeClosed(1, 6).anyMatch(this::isCellConfigured)); }
     public boolean isJailed(UUID id) { return prisoners.containsKey(id); }
 
     public void tickPrisoner(ServerPlayer player) {
@@ -301,7 +302,6 @@ public final class PoliceData extends SavedData {
             teleportToCell(player);
             player.sendSystemMessage(Component.literal("§cDu kan ikke forlate fengselsområdet."));
         }
-        if (!jailConfigured && getCellId(player.getUUID()) == 0) return;
         if (jailAreaConfigured) return;
         if (!jailConfigured) return;
         ResourceKey<Level> key = ResourceKey.create(Registries.DIMENSION, ResourceLocation.parse(jailDimension));
@@ -382,6 +382,7 @@ public final class PoliceData extends SavedData {
     public void enforceOnLogin(ServerPlayer player) {
         Prisoner p = prisoners.get(player.getUUID());
         if (p == null) return;
+        updateDayNightSchedule(player.getServer());
         if (p.remainingMillis() <= 0) {
             releasePlayer(player, p, "§aSoningen er ferdig. Du er automatisk løslatt.");
             return;
