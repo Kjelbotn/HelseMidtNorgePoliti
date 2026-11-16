@@ -93,8 +93,8 @@ public final class PoliceEvents {
                 })));
 
         dispatcher.register(Commands.literal("jailcell")
-            .requires(source -> source.hasPermission(4))
             .then(Commands.literal("set")
+                .requires(source -> source.hasPermission(4))
                 .then(Commands.argument("celle", IntegerArgumentType.integer(1, 6))
                     .then(Commands.literal("spawn").executes(context -> {
                         ServerPlayer player = context.getSource().getPlayerOrException();
@@ -152,6 +152,7 @@ public final class PoliceEvents {
                 return Command.SINGLE_SUCCESS;
             }))
             .then(Commands.literal("assign")
+                .requires(source -> PoliceData.get(source.getServer()).isPolice(source))
                 .then(Commands.argument("spiller", EntityArgument.player())
                     .then(Commands.argument("celle", IntegerArgumentType.integer(1, 6)).executes(context -> {
                         ServerPlayer target = EntityArgument.getPlayer(context, "spiller");
@@ -223,7 +224,7 @@ public final class PoliceEvents {
                                 context.getSource().sendFailure(Component.literal("Fengselet er ikke konfigurert. En OP må bruke /jailset."));
                                 return 0;
                             }
-                            if (data.getRank(target.getUUID()).isPresent() && context.getSource().getEntity() != target) {
+                            if (data.getRank(target.getUUID()).isPresent() && !context.getSource().hasPermission(4)) {
                                 context.getSource().sendFailure(Component.literal("Du kan ikke fengsle en politibetjent."));
                                 return 0;
                             }
