@@ -39,7 +39,7 @@ public final class PoliceData extends SavedData {
         public float yaw, pitch;
         public boolean spawnConfigured;
         public String doorDimension = "";
-        public int doorX, doorY, doorZ;
+        public int doorX, doorY, doorZ, doorX2, doorZ2;
         public boolean doorConfigured;
         public int minX, minY, minZ, maxX, maxY, maxZ;
         public boolean areaConfigured;
@@ -100,7 +100,7 @@ public final class PoliceData extends SavedData {
             cell.dimension=c.getString("Dimension");
             cell.spawnX=c.getDouble("SpawnX"); cell.spawnY=c.getDouble("SpawnY"); cell.spawnZ=c.getDouble("SpawnZ");
             cell.yaw=c.getFloat("Yaw"); cell.pitch=c.getFloat("Pitch"); cell.spawnConfigured=c.getBoolean("SpawnConfigured");
-            cell.doorDimension=c.getString("DoorDimension"); cell.doorX=c.getInt("DoorX"); cell.doorY=c.getInt("DoorY"); cell.doorZ=c.getInt("DoorZ"); cell.doorConfigured=c.getBoolean("DoorConfigured");
+            cell.doorDimension=c.getString("DoorDimension"); cell.doorX=c.getInt("DoorX"); cell.doorY=c.getInt("DoorY"); cell.doorZ=c.getInt("DoorZ"); cell.doorX2=c.getInt("DoorX2"); cell.doorZ2=c.getInt("DoorZ2"); cell.doorConfigured=c.getBoolean("DoorConfigured");
             cell.minX=c.getInt("MinX"); cell.minY=c.getInt("MinY"); cell.minZ=c.getInt("MinZ"); cell.maxX=c.getInt("MaxX"); cell.maxY=c.getInt("MaxY"); cell.maxZ=c.getInt("MaxZ"); cell.areaConfigured=c.getBoolean("AreaConfigured");
             data.cells.put(id,cell);
         }
@@ -152,7 +152,7 @@ public final class PoliceData extends SavedData {
             CompoundTag entry=new CompoundTag(); entry.putInt("Id",id); entry.putString("Dimension",c.dimension);
             entry.putDouble("SpawnX",c.spawnX); entry.putDouble("SpawnY",c.spawnY); entry.putDouble("SpawnZ",c.spawnZ);
             entry.putFloat("Yaw",c.yaw); entry.putFloat("Pitch",c.pitch); entry.putBoolean("SpawnConfigured",c.spawnConfigured);
-            entry.putString("DoorDimension",c.doorDimension); entry.putInt("DoorX",c.doorX); entry.putInt("DoorY",c.doorY); entry.putInt("DoorZ",c.doorZ); entry.putBoolean("DoorConfigured",c.doorConfigured);
+            entry.putString("DoorDimension",c.doorDimension); entry.putInt("DoorX",c.doorX); entry.putInt("DoorY",c.doorY); entry.putInt("DoorZ",c.doorZ); entry.putInt("DoorX2",c.doorX2); entry.putInt("DoorZ2",c.doorZ2); entry.putBoolean("DoorConfigured",c.doorConfigured);
             entry.putInt("MinX",c.minX); entry.putInt("MinY",c.minY); entry.putInt("MinZ",c.minZ); entry.putInt("MaxX",c.maxX); entry.putInt("MaxY",c.maxY); entry.putInt("MaxZ",c.maxZ); entry.putBoolean("AreaConfigured",c.areaConfigured);
             cellList.add(entry);
         });
@@ -218,11 +218,15 @@ public final class PoliceData extends SavedData {
         c.spawnX = player.getX(); c.spawnY = player.getY(); c.spawnZ = player.getZ();
         c.yaw = player.getYRot(); c.pitch = player.getXRot(); c.spawnConfigured = true; setDirty();
     }
-    public void setCellDoor(int id, ServerLevel level, net.minecraft.core.BlockPos pos) {
-        JailCell c = getCell(id);
-        c.doorDimension = level.dimension().location().toString();
-        c.doorX = pos.getX(); c.doorY = pos.getY(); c.doorZ = pos.getZ();
-        c.doorConfigured = true; setDirty();
+    public boolean setCellDoor(int id, ServerLevel level, net.minecraft.core.BlockPos first, net.minecraft.core.BlockPos second) {
+        if (first.getY() != second.getY() || Math.abs(first.getX()-second.getX()) + Math.abs(first.getZ()-second.getZ()) != 1) return false;
+        if (!(level.getBlockState(first).getBlock() instanceof net.minecraft.world.level.block.DoorBlock)
+            || !(level.getBlockState(second).getBlock() instanceof net.minecraft.world.level.block.DoorBlock)
+            || !level.getBlockState(first.above()).is(level.getBlockState(first).getBlock())
+            || !level.getBlockState(second.above()).is(level.getBlockState(second).getBlock())) return false;
+        JailCell c=getCell(id); c.doorDimension=level.dimension().location().toString();
+        c.doorX=first.getX(); c.doorY=first.getY(); c.doorZ=first.getZ();
+        c.doorX2=second.getX(); c.doorZ2=second.getZ(); c.doorConfigured=true; setDirty(); return true;
     }
     public void setCellCorner(int id, ServerPlayer player, boolean first) {
         JailCell c = getCell(id);
@@ -448,11 +452,15 @@ public final class PoliceData extends SavedData {
             ResourceKey<Level> key = ResourceKey.create(Registries.DIMENSION, ResourceLocation.parse(c.doorDimension));
             ServerLevel level = server.getLevel(key);
             if (level == null) continue;
-            net.minecraft.core.BlockPos pos = new net.minecraft.core.BlockPos(c.doorX, c.doorY, c.doorZ);
-            var state = level.getBlockState(pos);
-            if (state.hasProperty(net.minecraft.world.level.block.state.properties.BlockStateProperties.OPEN)
-                && state.getValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.OPEN)) {
-                level.setBlock(pos, state.setValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.OPEN, false), 3);
+            for (int n=0;n<2;n++) {
+                int x=n==0?c.doorX:c.doorX2, z=n==0?c.doorZ:c.doorZ2;
+                for (int y=c.doorY;y<=c.doorY+1;y++) {
+                    net.minecraft.core.BlockPos pos=new net.minecraft.core.BlockPos(x,y,z);
+                    var state=level.getBlockState(pos);
+                    if (state.hasProperty(net.minecraft.world.level.block.state.properties.BlockStateProperties.OPEN)
+                        && state.getValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.OPEN))
+                        level.setBlock(pos,state.setValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.OPEN,false),3);
+                }
             }
         }
     }
