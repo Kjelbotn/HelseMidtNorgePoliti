@@ -242,6 +242,7 @@ public final class PoliceData extends SavedData {
             player.sendSystemMessage(Component.literal("§cDu kan ikke forlate fengselsområdet."));
         }
         if (!jailConfigured && getCellId(player.getUUID()) == 0) return;
+        if (jailAreaConfigured) return;
         if (!jailConfigured) return;
         ResourceKey<Level> key = ResourceKey.create(Registries.DIMENSION, ResourceLocation.parse(jailDimension));
         ServerLevel jailLevel = player.getServer().getLevel(key);
@@ -270,7 +271,7 @@ public final class PoliceData extends SavedData {
             .append(Component.literal(" ble satt i fengsel. Kom gjerne på besøk!").withStyle(ChatFormatting.GRAY));
         player.getServer().getPlayerList().broadcastSystemMessage(announcement, false);
 
-        enforce(player);
+        if (cellId > 0) teleportToCell(player); else enforce(player);
         if (cellId == 0) player.sendSystemMessage(Component.literal("§eIngen ledig, fullstendig konfigurert celle. Du er satt i midlertidig fengselsplass."));
         else player.sendSystemMessage(Component.literal("§7Du er tildelt celle §e" + cellId + "§7."));
 
@@ -396,6 +397,17 @@ public final class PoliceData extends SavedData {
 
     private void enforce(ServerPlayer player) {
         int id = getCellId(player.getUUID());
+        if (id > 0) {
+            JailCell cell = cells.get(id);
+            if (cell != null && cell.spawnConfigured) {
+                ResourceKey<Level> cellKey = ResourceKey.create(Registries.DIMENSION, ResourceLocation.parse(cell.dimension));
+                ServerLevel cellLevel = player.getServer().getLevel(cellKey);
+                if (cellLevel != null && (player.level() != cellLevel || nightLockdown)) {
+                    player.teleportTo(cellLevel, cell.spawnX, cell.spawnY, cell.spawnZ, Set.of(), cell.yaw, cell.pitch);
+                }
+                return;
+            }
+        }
         if (nightLockdown && id > 0) {
             JailCell c = cells.get(id);
             if (c != null && c.areaConfigured && player.level().dimension().location().toString().equals(c.dimension)) {
