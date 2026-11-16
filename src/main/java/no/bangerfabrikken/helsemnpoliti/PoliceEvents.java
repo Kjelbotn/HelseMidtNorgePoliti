@@ -39,6 +39,7 @@ public final class PoliceEvents {
                             }
                             PoliceData data = PoliceData.get(context.getSource().getServer());
                             data.setRank(target.getUUID(), rank.get());
+                            data.refreshPoliceTag(target);
                             context.getSource().sendSuccess(() -> Component.literal("§a" + target.getGameProfile().getName() + " er nå " + rank.get().displayName() + "."), true);
                             target.sendSystemMessage(Component.literal("§9[HMN Politi] §fDu er utnevnt til " + rank.get().displayName() + "."));
                             return Command.SINGLE_SUCCESS;
@@ -53,6 +54,7 @@ public final class PoliceEvents {
                             context.getSource().sendFailure(Component.literal(target.getGameProfile().getName() + " har ingen politirang."));
                             return 0;
                         }
+                        data.refreshPoliceTag(target);
                         context.getSource().sendSuccess(() -> Component.literal("§ePolitirangen til " + target.getGameProfile().getName() + " er fjernet."), true);
                         target.sendSystemMessage(Component.literal("§c[HMN Politi] Polititilgangen din er fjernet."));
                         return Command.SINGLE_SUCCESS;
@@ -149,6 +151,7 @@ public final class PoliceEvents {
         if (!(event.getEntity() instanceof ServerPlayer player)) return;
         PoliceData data = PoliceData.get(player.getServer());
         data.enforceOnLogin(player);
+        data.refreshPoliceTag(player);
     }
 
     @SubscribeEvent
