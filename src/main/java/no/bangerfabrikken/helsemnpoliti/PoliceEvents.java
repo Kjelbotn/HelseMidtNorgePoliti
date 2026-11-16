@@ -180,6 +180,7 @@ public final class PoliceEvents {
         if (event.getEntity() instanceof ServerPlayer player
             && PoliceData.get(player.getServer()).isJailed(player.getUUID())) {
             event.setCanceled(true);
+            syncPrisonerInventory(player);
             player.displayClientMessage(Component.literal("§cDu kan ikke plassere blokker mens du sitter i fengsel."), true);
         }
     }
@@ -192,6 +193,7 @@ public final class PoliceEvents {
 
         // Cancel before vanilla consumes the item stack for block placement.
         event.setCanceled(true);
+        syncPrisonerInventory(player);
         player.displayClientMessage(Component.literal("§cDu kan ikke plassere blokker mens du sitter i fengsel."), true);
     }
 
@@ -204,6 +206,13 @@ public final class PoliceEvents {
             event.setCanceled(true);
             player.displayClientMessage(Component.literal("§cDu kan ikke åpne dører eller porter mens du sitter i fengsel."), true);
         }
+    }
+
+    private static void syncPrisonerInventory(ServerPlayer player) {
+        // The client predicts block placement and may visually consume the stack.
+        // Force a fresh authoritative inventory update after rejecting the action.
+        player.getInventory().setChanged();
+        player.containerMenu.broadcastChanges();
     }
 
     @SubscribeEvent
