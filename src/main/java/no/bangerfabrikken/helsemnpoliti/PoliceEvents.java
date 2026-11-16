@@ -100,18 +100,19 @@ public final class PoliceEvents {
                         return Command.SINGLE_SUCCESS;
                     }))
                     .then(Commands.literal("door")
-                        .then(Commands.argument("pos", BlockPosArgument.blockPos()).executes(context -> {
-                            ServerPlayer player = context.getSource().getPlayerOrException();
-                            int id = IntegerArgumentType.getInteger(context, "celle");
-                            var pos = BlockPosArgument.getLoadedBlockPos(context, "pos");
-                            if (!(player.level().getBlockState(pos).getBlock() instanceof DoorBlock)) {
-                                context.getSource().sendFailure(Component.literal("Du må angi en vanlig dørblokk."));
-                                return 0;
-                            }
-                            PoliceData.get(context.getSource().getServer()).setCellDoor(id, player.serverLevel(), pos);
-                            context.getSource().sendSuccess(() -> Component.literal("§aDøren til celle " + id + " er registrert."), true);
-                            return Command.SINGLE_SUCCESS;
-                        })))
+                        .then(Commands.argument("pos1", BlockPosArgument.blockPos())
+                            .then(Commands.argument("pos2", BlockPosArgument.blockPos()).executes(context -> {
+                                ServerPlayer player=context.getSource().getPlayerOrException();
+                                int id=IntegerArgumentType.getInteger(context,"celle");
+                                var p1=BlockPosArgument.getLoadedBlockPos(context,"pos1");
+                                var p2=BlockPosArgument.getLoadedBlockPos(context,"pos2");
+                                if (!PoliceData.get(context.getSource().getServer()).setCellDoor(id,player.serverLevel(),p1,p2)) {
+                                    context.getSource().sendFailure(Component.literal("Velg de to nederste dørblokkene side ved side i en 2x2-dør."));
+                                    return 0;
+                                }
+                                context.getSource().sendSuccess(() -> Component.literal("§a2x2-døren til celle "+id+" er registrert."),true);
+                                return Command.SINGLE_SUCCESS;
+                            }))))
                     .then(Commands.literal("pos1").executes(context -> {
                         ServerPlayer player = context.getSource().getPlayerOrException();
                         int id = IntegerArgumentType.getInteger(context, "celle");
