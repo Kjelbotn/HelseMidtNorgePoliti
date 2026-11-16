@@ -210,7 +210,7 @@ public final class PoliceData extends SavedData {
             ? String.format(Locale.ROOT, "%02d:%02d:%02d", hours, minutes, seconds)
             : String.format(Locale.ROOT, "%02d:%02d", minutes, seconds);
         return Component.literal("LØSLATES OM  " + clock)
-            .withStyle(ChatFormatting.BLUE, ChatFormatting.BOLD);
+            .withStyle(ChatFormatting.RED);
     }
 
     public String remainingTimeMessage(UUID id) {
