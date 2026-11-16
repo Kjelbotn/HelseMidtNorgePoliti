@@ -12,11 +12,15 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.level.Level;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
+import net.minecraft.ChatFormatting;
+import net.minecraft.world.scores.PlayerTeam;
+import net.minecraft.world.scores.Scoreboard;
 
 import java.util.*;
 
 public final class PoliceData extends SavedData {
     private static final String DATA_NAME = "helsemnpoliti_data";
+    private static final String POLICE_TEAM = "helsemnpoliti_police";
     private final Map<UUID, PoliceRank> ranks = new HashMap<>();
     private final Map<UUID, Prisoner> prisoners = new HashMap<>();
     private String jailDimension = "";
@@ -98,6 +102,18 @@ public final class PoliceData extends SavedData {
     }
 
     public void setRank(UUID id, PoliceRank rank) { ranks.put(id, rank); setDirty(); }
+
+    public void refreshPoliceTag(ServerPlayer player) {
+        Scoreboard scoreboard = player.getServer().getScoreboard();
+        PlayerTeam team = scoreboard.getPlayerTeam(POLICE_TEAM);
+        if (team == null) team = scoreboard.addPlayerTeam(POLICE_TEAM);
+        team.setPlayerPrefix(Component.literal("[Politi] ").withStyle(ChatFormatting.BLUE));
+        if (ranks.containsKey(player.getUUID())) {
+            scoreboard.addPlayerToTeam(player.getScoreboardName(), team);
+        } else if (player.getTeam() == team) {
+            scoreboard.removePlayerFromTeam(player.getScoreboardName(), team);
+        }
+    }
     public boolean removeRank(UUID id) { boolean changed = ranks.remove(id) != null; if (changed) setDirty(); return changed; }
     public Optional<PoliceRank> getRank(UUID id) { return Optional.ofNullable(ranks.get(id)); }
     public boolean isPolice(net.minecraft.commands.CommandSourceStack source) {
