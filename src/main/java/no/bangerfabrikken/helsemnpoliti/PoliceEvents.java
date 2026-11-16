@@ -109,7 +109,7 @@ public final class PoliceEvents {
                             data.jail(target, minutes, reason, context.getSource().getTextName());
                             context.getSource().sendSuccess(() -> Component.literal("§a" + target.getGameProfile().getName() + " er fengslet i " + minutes + " minutt(er). Grunn: " + reason), true);
                             return Command.SINGLE_SUCCESS;
-                        }))))));
+                        })))));
 
         dispatcher.register(Commands.literal("unjail")
             .requires(source -> PoliceData.get(source.getServer()).isPolice(source))
