@@ -150,4 +150,52 @@ public final class PoliceEvents {
         PoliceData data = PoliceData.get(player.getServer());
         data.enforceOnLogin(player);
     }
+
+    @SubscribeEvent
+    public static void onPlayerTick(net.neoforged.neoforge.event.tick.PlayerTickEvent.Post event) {
+        if (!(event.getEntity() instanceof ServerPlayer player)) return;
+        PoliceData data = PoliceData.get(player.getServer());
+        data.tickPrisoner(player);
+    }
+
+    @SubscribeEvent
+    public static void onBlockBreak(net.neoforged.neoforge.event.level.BlockEvent.BreakEvent event) {
+        if (event.getPlayer() instanceof ServerPlayer player
+            && PoliceData.get(player.getServer()).isJailed(player.getUUID())) {
+            event.setCanceled(true);
+            player.displayClientMessage(Component.literal("§cDu kan ikke ødelegge blokker mens du sitter i fengsel."), true);
+        }
+    }
+
+    @SubscribeEvent
+    public static void onBlockPlace(net.neoforged.neoforge.event.level.BlockEvent.EntityPlaceEvent event) {
+        if (event.getEntity() instanceof ServerPlayer player
+            && PoliceData.get(player.getServer()).isJailed(player.getUUID())) {
+            event.setCanceled(true);
+            player.displayClientMessage(Component.literal("§cDu kan ikke plassere blokker mens du sitter i fengsel."), true);
+        }
+    }
+
+    @SubscribeEvent
+    public static void onAttack(net.neoforged.neoforge.event.entity.player.AttackEntityEvent event) {
+        if (event.getEntity() instanceof ServerPlayer player
+            && PoliceData.get(player.getServer()).isJailed(player.getUUID())) {
+            event.setCanceled(true);
+            player.displayClientMessage(Component.literal("§cDu kan ikke angripe mens du sitter i fengsel."), true);
+        }
+    }
+
+    @SubscribeEvent
+    public static void onCommand(net.neoforged.neoforge.event.CommandEvent event) {
+        if (!(event.getParseResults().getContext().getSource().getEntity() instanceof ServerPlayer player)) return;
+        if (!PoliceData.get(player.getServer()).isJailed(player.getUUID())) return;
+        String raw = event.getParseResults().getReader().getString().trim().toLowerCase(java.util.Locale.ROOT);
+        String root = raw.startsWith("/") ? raw.substring(1).split("\\s+", 2)[0] : raw.split("\\s+", 2)[0];
+        if (java.util.Set.of("home", "spawn", "tpa", "tpaccept", "tpahere", "warp", "back", "rtp", "hub", "lobby")
+            .contains(root)) {
+            event.setCanceled(true);
+            player.sendSystemMessage(Component.literal("§cDu kan ikke bruke teleportkommandoer mens du sitter i fengsel."));
+        }
+    }
+
 }
