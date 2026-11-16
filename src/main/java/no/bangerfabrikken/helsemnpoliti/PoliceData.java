@@ -159,6 +159,9 @@ public final class PoliceData extends SavedData {
             releasePlayer(player, prisoner, "§aSoningen er ferdig. Du er automatisk løslatt.");
             return;
         }
+        if (player.serverLevel().getGameTime() % 20L == 0L) {
+            player.displayClientMessage(countdownComponent(prisoner), true);
+        }
         if (!jailConfigured) return;
         ResourceKey<Level> key = ResourceKey.create(Registries.DIMENSION, ResourceLocation.parse(jailDimension));
         ServerLevel jailLevel = player.getServer().getLevel(key);
@@ -188,6 +191,18 @@ public final class PoliceData extends SavedData {
         if (removed == null) return false;
         releasePlayer(player, removed, "§aDu er løslatt fra fengselet.");
         return true;
+    }
+
+    private Component countdownComponent(Prisoner prisoner) {
+        long totalSeconds = Math.max(1L, (prisoner.remainingMillis() + 999L) / 1000L);
+        long hours = totalSeconds / 3600L;
+        long minutes = (totalSeconds % 3600L) / 60L;
+        long seconds = totalSeconds % 60L;
+        String clock = hours > 0
+            ? String.format(Locale.ROOT, "%02d:%02d:%02d", hours, minutes, seconds)
+            : String.format(Locale.ROOT, "%02d:%02d", minutes, seconds);
+        return Component.literal("LØSLATES OM  " + clock)
+            .withStyle(ChatFormatting.BLUE, ChatFormatting.BOLD);
     }
 
     public String remainingTimeMessage(UUID id) {
@@ -233,6 +248,7 @@ public final class PoliceData extends SavedData {
             }
         }
 
+        player.displayClientMessage(Component.empty(), true);
         player.sendSystemMessage(Component.literal(message));
     }
 
