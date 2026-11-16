@@ -139,10 +139,10 @@ public final class PoliceEvents {
             .then(Commands.literal("list").executes(context -> {
                 PoliceData data = PoliceData.get(context.getSource().getServer());
                 for (int id = 1; id <= 6; id++) {
-                    var c = data.getCell(id);
-                    context.getSource().sendSuccess(() -> Component.literal("§9Celle " + id + " §7- " +
-                        (data.isCellConfigured(id) ? "konfigurert" : "ufullstendig") + " / " +
-                        (data.isCellOccupied(id) ? "§copptatt" : "§aledig")), false);
+                    final int cellId = id;
+                    context.getSource().sendSuccess(() -> Component.literal("§9Celle " + cellId + " §7- " +
+                        (data.isCellConfigured(cellId) ? "konfigurert" : "ufullstendig") + " / " +
+                        (data.isCellOccupied(cellId) ? "§copptatt" : "§aledig")), false);
                 }
                 return Command.SINGLE_SUCCESS;
             }))
