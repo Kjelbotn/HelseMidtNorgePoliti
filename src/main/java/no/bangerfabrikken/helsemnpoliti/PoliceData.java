@@ -166,7 +166,11 @@ public final class PoliceData extends SavedData {
         prisoners.put(player.getUUID(), new Prisoner(player.getGameProfile().getName(), reason, officer, releaseAt));
         setDirty();
         enforce(player);
-        player.sendSystemMessage(Component.literal("§c§lDU ER FENGSLET\\n§fGrunn: §e" + reason + "\\n§fTid: §e" + minutes + " minutter\\n§fArrestert av: §e" + officer));
+
+        player.sendSystemMessage(Component.literal("§c§lDU ER FENGSLET"));
+        player.sendSystemMessage(Component.literal("§fGrunn: §e" + reason));
+        player.sendSystemMessage(Component.literal("§fTid: §e" + minutes + (minutes == 1 ? " minutt" : " minutter")));
+        player.sendSystemMessage(Component.literal("§fArrestert av: §e" + officer));
     }
 
     public boolean release(ServerPlayer player) {
