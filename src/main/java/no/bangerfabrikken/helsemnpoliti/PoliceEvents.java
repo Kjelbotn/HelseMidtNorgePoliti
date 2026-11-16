@@ -14,6 +14,7 @@ import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
 import net.minecraft.world.level.block.DoorBlock;
 import net.minecraft.world.level.block.TrapDoorBlock;
 import net.minecraft.world.level.block.FenceGateBlock;
+import net.minecraft.world.item.BlockItem;
 
 public final class PoliceEvents {
     private PoliceEvents() {}
@@ -180,6 +181,28 @@ public final class PoliceEvents {
             && PoliceData.get(player.getServer()).isJailed(player.getUUID())) {
             event.setCanceled(true);
             player.displayClientMessage(Component.literal("§cDu kan ikke plassere blokker mens du sitter i fengsel."), true);
+        }
+    }
+
+    @SubscribeEvent
+    public static void onPrisonerBlockPlacementAttempt(PlayerInteractEvent.RightClickBlock event) {
+        if (!(event.getEntity() instanceof ServerPlayer player)) return;
+        if (!PoliceData.get(player.getServer()).isJailed(player.getUUID())) return;
+        if (!(player.getItemInHand(event.getHand()).getItem() instanceof BlockItem)) return;
+
+        // Cancel before vanilla consumes the item stack for block placement.
+        event.setCanceled(true);
+        player.displayClientMessage(Component.literal("§cDu kan ikke plassere blokker mens du sitter i fengsel."), true);
+    }
+
+    @SubscribeEvent
+    public static void onPrisonerDoorInteract(PlayerInteractEvent.RightClickBlock event) {
+        if (!(event.getEntity() instanceof ServerPlayer player)) return;
+        if (!PoliceData.get(player.getServer()).isJailed(player.getUUID())) return;
+        var block = event.getLevel().getBlockState(event.getPos()).getBlock();
+        if (block instanceof DoorBlock || block instanceof TrapDoorBlock || block instanceof FenceGateBlock) {
+            event.setCanceled(true);
+            player.displayClientMessage(Component.literal("§cDu kan ikke åpne dører eller porter mens du sitter i fengsel."), true);
         }
     }
 
