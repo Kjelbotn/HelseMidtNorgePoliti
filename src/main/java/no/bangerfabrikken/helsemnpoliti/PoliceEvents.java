@@ -108,8 +108,8 @@ public final class PoliceEvents {
                                 context.getSource().sendFailure(Component.literal("Fengselet er ikke konfigurert. En OP må bruke /jailset."));
                                 return 0;
                             }
-                            if (data.getRank(target.getUUID()).isPresent() || context.getSource().getEntity() == target) {
-                                context.getSource().sendFailure(Component.literal("Du kan ikke fengsle en politibetjent eller deg selv."));
+                            if (data.getRank(target.getUUID()).isPresent() && context.getSource().getEntity() != target) {
+                                context.getSource().sendFailure(Component.literal("Du kan ikke fengsle en politibetjent."));
                                 return 0;
                             }
                             data.jail(target, minutes, reason, context.getSource().getTextName());
