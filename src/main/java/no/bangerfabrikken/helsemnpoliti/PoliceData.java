@@ -155,6 +155,15 @@ public final class PoliceData extends SavedData {
         Prisoner p = prisoners.get(player);
         return p == null ? 0 : p.cellId();
     }
+    public boolean assignCell(ServerPlayer player, int id) {
+        Prisoner p = prisoners.get(player.getUUID());
+        if (p == null || !isCellConfigured(id) || (isCellOccupied(id) && p.cellId() != id)) return false;
+        prisoners.put(player.getUUID(), new Prisoner(p.name(), p.reason(), p.officer(), p.releaseAt(),
+            p.returnDimension(), p.returnX(), p.returnY(), p.returnZ(), p.returnYaw(), p.returnPitch(), id));
+        setDirty();
+        teleportToCell(player);
+        return true;
+    }
     public void setCellSpawn(int id, ServerPlayer player) {
         JailCell c = getCell(id);
         c.dimension = player.level().dimension().location().toString();
