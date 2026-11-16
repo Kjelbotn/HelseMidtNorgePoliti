@@ -10,6 +10,10 @@ import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
+import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
+import net.minecraft.world.level.block.DoorBlock;
+import net.minecraft.world.level.block.TrapDoorBlock;
+import net.minecraft.world.level.block.FenceGateBlock;
 
 public final class PoliceEvents {
     private PoliceEvents() {}
@@ -191,14 +195,10 @@ public final class PoliceEvents {
     @SubscribeEvent
     public static void onCommand(net.neoforged.neoforge.event.CommandEvent event) {
         if (!(event.getParseResults().getContext().getSource().getEntity() instanceof ServerPlayer player)) return;
-        if (!PoliceData.get(player.getServer()).isJailed(player.getUUID())) return;
-        String raw = event.getParseResults().getReader().getString().trim().toLowerCase(java.util.Locale.ROOT);
-        String root = raw.startsWith("/") ? raw.substring(1).split("\\s+", 2)[0] : raw.split("\\s+", 2)[0];
-        if (java.util.Set.of("home", "spawn", "tpa", "tpaccept", "tpahere", "warp", "back", "rtp", "hub", "lobby")
-            .contains(root)) {
-            event.setCanceled(true);
-            player.sendSystemMessage(Component.literal("§cDu kan ikke bruke teleportkommandoer mens du sitter i fengsel."));
-        }
+        PoliceData data = PoliceData.get(player.getServer());
+        if (!data.isJailed(player.getUUID())) return;
+        event.setCanceled(true);
+        player.sendSystemMessage(Component.literal("§c" + data.remainingTimeMessage(player.getUUID())));
     }
 
 }
