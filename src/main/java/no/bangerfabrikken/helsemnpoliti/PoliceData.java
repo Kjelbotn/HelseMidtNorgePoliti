@@ -155,7 +155,7 @@ public final class PoliceData extends SavedData {
         ResourceKey<Level> key = ResourceKey.create(Registries.DIMENSION, ResourceLocation.parse(jailDimension));
         ServerLevel jailLevel = player.getServer().getLevel(key);
         if (jailLevel == null) return;
-        if (player.level() != jailLevel || player.distanceToSqr(jailX, jailY, jailZ) > 100.0D) {
+        if (player.level() != jailLevel || player.distanceToSqr(jailX, jailY, jailZ) > 2500.0D) {
             enforce(player);
             player.sendSystemMessage(Component.literal("§cDu kan ikke forlate fengselsområdet."));
         }
@@ -175,6 +175,16 @@ public final class PoliceData extends SavedData {
         setDirty();
         player.sendSystemMessage(Component.literal("§aDu er løslatt fra fengselet."));
         return true;
+    }
+
+    public String remainingTimeMessage(UUID id) {
+        Prisoner prisoner = prisoners.get(id);
+        if (prisoner == null) return "";
+        long seconds = Math.max(1L, (prisoner.remainingMillis() + 999L) / 1000L);
+        long minutes = seconds / 60L;
+        long remainingSeconds = seconds % 60L;
+        String time = minutes > 0 ? minutes + " minutter" + (remainingSeconds > 0 ? " og " + remainingSeconds + " sekunder" : "") : remainingSeconds + " sekunder";
+        return "Du er i fengsel i " + time + " til. Du kan ikke bruke kommandoer før den tid.";
     }
 
     public Optional<PrisonerInfo> getPrisoner(UUID id) {
