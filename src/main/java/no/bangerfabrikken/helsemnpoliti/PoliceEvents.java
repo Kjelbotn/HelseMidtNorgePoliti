@@ -415,7 +415,6 @@ public final class PoliceEvents {
                         () -> Component.literal("§7" + PoliceData.formatLogEntry(entry)), false));
                     return entries.size();
                 }))));
-    }
 
         dispatcher.register(Commands.literal("politi")
             .then(Commands.literal("sjekk")
@@ -453,6 +452,7 @@ public final class PoliceEvents {
                         context.getSource().getTextName(), "Kontrollert av politiet");
                     return Command.SINGLE_SUCCESS;
                 }))));
+    }
 
     @SubscribeEvent
     public static void onLogin(PlayerEvent.PlayerLoggedInEvent event) {
