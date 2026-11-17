@@ -5,6 +5,7 @@ import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.arguments.EntityArgument;
+import net.minecraft.commands.arguments.GameProfileArgument;
 import net.minecraft.commands.arguments.coordinates.BlockPosArgument;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
@@ -419,25 +420,36 @@ public final class PoliceEvents {
         dispatcher.register(Commands.literal("politi")
             .then(Commands.literal("sjekk")
                 .requires(source -> PoliceData.get(source.getServer()).isPolice(source))
-                .then(Commands.argument("spiller", EntityArgument.player()).executes(context -> {
-                    ServerPlayer target = EntityArgument.getPlayer(context, "spiller");
+                .then(Commands.argument("spiller", GameProfileArgument.gameProfile()).executes(context -> {
+                    var profiles = GameProfileArgument.getGameProfiles(context, "spiller");
+                    if (profiles.isEmpty()) {
+                        context.getSource().sendFailure(Component.literal("Fant ikke spilleren."));
+                        return 0;
+                    }
+                    var profile = profiles.iterator().next();
+                    var playerId = profile.getId();
+                    String name = profile.getName();
                     PoliceData data = PoliceData.get(context.getSource().getServer());
-                    String name = target.getGameProfile().getName();
-                    String uuid = target.getUUID().toString();
-                    String rank = data.getRank(target.getUUID())
-                        .map(PoliceRank::displayName).orElse("Ingen");
-                    var prisoner = data.getPrisoner(target.getUUID());
-                    var arrests = data.getArrestHistory(target.getUUID());
+                    ServerPlayer onlinePlayer = context.getSource().getServer().getPlayerList().getPlayer(playerId);
+                    String rank = data.getRank(playerId).map(PoliceRank::displayName).orElse("Ingen");
+                    var prisoner = data.getPrisoner(playerId);
+                    var arrests = data.getArrestHistory(playerId);
                     context.getSource().sendSuccess(() -> Component.literal("§9§lIDENTITETSKONTROLL §7– " + name), false);
-                    context.getSource().sendSuccess(() -> Component.literal("§7Spiller: §f" + name + " §a(tilkoblet)"), false);
-                    context.getSource().sendSuccess(() -> Component.literal("§7UUID: §f" + uuid), false);
+                    context.getSource().sendSuccess(() -> Component.literal("§7Spiller: §f" + name
+                        + (onlinePlayer != null ? " §a(tilkoblet)" : " §7(frakoblet)")), false);
+                    context.getSource().sendSuccess(() -> Component.literal("§7Sist aktiv: §f" +
+                        (onlinePlayer != null ? "Nå (tilkoblet)" : data.getLastActive(playerId).isPresent()
+                            ? java.time.Instant.ofEpochMilli(data.getLastActive(playerId).getAsLong())
+                                .atZone(java.time.ZoneId.systemDefault())
+                                .format(java.time.format.DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm"))
+                            : "Ukjent")), false);
                     context.getSource().sendSuccess(() -> Component.literal("§7Politirang: §f" + rank
-                        + (data.isOnDuty(target.getUUID()) ? " §a(på vakt)" : "")), false);
+                        + (data.isOnDuty(playerId) ? " §a(på vakt)" : "")), false);
                     context.getSource().sendSuccess(() -> Component.literal(prisoner
                         .map(p -> "§7Fengselsstatus: §cInnsatt – " + p.remaining() + " min igjen. Grunn: " + p.reason())
                         .orElse("§7Fengselsstatus: §aIkke innsatt")), false);
                     context.getSource().sendSuccess(() -> Component.literal("§7Registrerte arrest-/løslatelseshendelser: §f" + arrests.size()), false);
-                    data.logAction("Identitetskontroll", target.getUUID(), name,
+                    data.logAction("Identitetskontroll", playerId, name,
                         context.getSource().getTextName(), "Kontrollert av politiet");
                     return Command.SINGLE_SUCCESS;
                 }))));
@@ -453,7 +465,9 @@ public final class PoliceEvents {
     @SubscribeEvent
     public static void onLogout(PlayerEvent.PlayerLoggedOutEvent event) {
         if (!(event.getEntity() instanceof ServerPlayer player)) return;
-        PoliceData.get(player.getServer()).endDuty(player);
+        PoliceData data = PoliceData.get(player.getServer());
+        data.recordLastActive(player.getUUID());
+        data.endDuty(player);
     }
 
     @SubscribeEvent
