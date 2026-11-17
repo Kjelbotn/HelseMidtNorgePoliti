@@ -413,7 +413,7 @@ public final class PoliceEvents {
                     entries.forEach(entry -> context.getSource().sendSuccess(
                         () -> Component.literal("§7" + PoliceData.formatLogEntry(entry)), false));
                     return entries.size();
-                })));
+                }))));
     }
 
     @SubscribeEvent
