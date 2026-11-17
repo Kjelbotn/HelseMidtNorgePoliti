@@ -159,6 +159,32 @@ public final class PoliceEvents {
                     return Command.SINGLE_SUCCESS;
                 })));
 
+        dispatcher.register(Commands.literal("politi")
+            .then(Commands.literal("vakt").executes(context -> {
+                ServerPlayer player = context.getSource().getPlayerOrException();
+                PoliceData data = PoliceData.get(context.getSource().getServer());
+                if (!data.isPolice(context.getSource()) || data.getRank(player.getUUID()).isEmpty()) {
+                    context.getSource().sendFailure(Component.literal("Du må ha politirang for å kunne gå på vakt."));
+                    return 0;
+                }
+                boolean onDuty = data.toggleDuty(player);
+                if (onDuty) {
+                    player.sendSystemMessage(Component.literal("§a§l[HMN POLITI] §fDu er nå §aPÅ VAKT§f. [Politi]-taggen er aktiv."));
+                } else {
+                    player.sendSystemMessage(Component.literal("§e§l[HMN POLITI] §fDu er nå §eAV VAKT§f. [Politi]-taggen er fjernet."));
+                }
+                return Command.SINGLE_SUCCESS;
+            }))
+            .then(Commands.literal("vaktliste")
+                .requires(source -> PoliceData.get(source.getServer()).isPolice(source))
+                .executes(context -> {
+                    var names = PoliceData.get(context.getSource().getServer()).getOnDutyNames(context.getSource().getServer());
+                    context.getSource().sendSuccess(() -> Component.literal("§9§lHMN POLITI – PÅ VAKT §7(" + names.size() + ")"), false);
+                    if (names.isEmpty()) context.getSource().sendSuccess(() -> Component.literal("§7Ingen betjenter er på vakt akkurat nå."), false);
+                    names.forEach(name -> context.getSource().sendSuccess(() -> Component.literal("§b• " + name), false));
+                    return names.size();
+                })));
+
         dispatcher.register(Commands.literal("jailcell")
             .then(Commands.literal("set")
                 .requires(source -> source.hasPermission(4))
@@ -390,6 +416,12 @@ public final class PoliceEvents {
         PoliceData data = PoliceData.get(player.getServer());
         data.enforceOnLogin(player);
         data.refreshPoliceTag(player);
+    }
+
+    @SubscribeEvent
+    public static void onLogout(PlayerEvent.PlayerLoggedOutEvent event) {
+        if (!(event.getEntity() instanceof ServerPlayer player)) return;
+        PoliceData.get(player.getServer()).endDuty(player);
     }
 
     @SubscribeEvent
