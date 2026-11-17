@@ -140,7 +140,7 @@ public final class PoliceEvents {
                         final int recipientCount = recipients;
                         source.sendSuccess(() -> Component.literal("§aMeldingen ble sendt på politiets samband (" + recipientCount + " mottakere)."), false);
                         return Command.SINGLE_SUCCESS;
-                    }))))
+                    })))
             .then(Commands.literal("status")
                 .requires(source -> PoliceData.get(source.getServer()).isPolice(source))
                 .executes(context -> {
@@ -407,7 +407,7 @@ public final class PoliceEvents {
                     entries.forEach(entry -> context.getSource().sendSuccess(
                         () -> Component.literal("§7" + PoliceData.formatLogEntry(entry)), false));
                     return entries.size();
-                })));
+                })))));
     }
 
     @SubscribeEvent
