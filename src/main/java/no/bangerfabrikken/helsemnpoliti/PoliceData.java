@@ -24,6 +24,7 @@ public final class PoliceData extends SavedData {
     private final Map<UUID, PoliceRank> ranks = new HashMap<>();
     private final Set<UUID> onDuty = new HashSet<>();
     private final Map<UUID, Prisoner> prisoners = new HashMap<>();
+    private final Map<UUID, Long> lastActive = new HashMap<>();
     private String jailDimension = "";
     private double jailX, jailY, jailZ;
     private float jailYaw, jailPitch;
@@ -83,6 +84,13 @@ public final class PoliceData extends SavedData {
                     entry.getString("Officer"), entry.getLong("ReleaseAt"),
                     entry.getString("ReturnDimension"), entry.getDouble("ReturnX"), entry.getDouble("ReturnY"),
                     entry.getDouble("ReturnZ"), entry.getFloat("ReturnYaw"), entry.getFloat("ReturnPitch"), entry.getInt("CellId")));
+            } catch (RuntimeException ignored) {}
+        }
+        ListTag activityList = tag.getList("LastActive", 10);
+        for (int i = 0; i < activityList.size(); i++) {
+            CompoundTag entry = activityList.getCompound(i);
+            try {
+                data.lastActive.put(UUID.fromString(entry.getString("UUID")), entry.getLong("Timestamp"));
             } catch (RuntimeException ignored) {}
         }
         data.jailConfigured = tag.getBoolean("JailConfigured");
@@ -153,6 +161,15 @@ public final class PoliceData extends SavedData {
             jailList.add(entry);
         });
         tag.put("Prisoners", jailList);
+        ListTag activityList = new ListTag();
+        lastActive.forEach((uuid, timestamp) -> {
+            CompoundTag entry = new CompoundTag();
+            entry.putString("UUID", uuid.toString());
+            entry.putLong("Timestamp", timestamp);
+            activityList.add(entry);
+        });
+        tag.put("LastActive", activityList);
+
         tag.putBoolean("JailConfigured", jailConfigured);
         tag.putString("JailDimension", jailDimension);
         tag.putDouble("JailX", jailX);
@@ -190,6 +207,16 @@ public final class PoliceData extends SavedData {
         });
         tag.put("Cells",cellList);
         return tag;
+    }
+
+    public void recordLastActive(UUID id) {
+        lastActive.put(id, System.currentTimeMillis());
+        setDirty();
+    }
+
+    public OptionalLong getLastActive(UUID id) {
+        Long timestamp = lastActive.get(id);
+        return timestamp == null ? OptionalLong.empty() : OptionalLong.of(timestamp);
     }
 
     public void setRank(UUID id, PoliceRank rank) { ranks.put(id, rank); setDirty(); }
