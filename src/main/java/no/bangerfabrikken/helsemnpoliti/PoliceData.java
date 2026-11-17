@@ -22,6 +22,7 @@ public final class PoliceData extends SavedData {
     private static final String DATA_NAME = "helsemnpoliti_data";
     private static final String POLICE_TEAM = "helsemnpoliti_police";
     private final Map<UUID, PoliceRank> ranks = new HashMap<>();
+    private final Set<UUID> onDuty = new HashSet<>();
     private final Map<UUID, Prisoner> prisoners = new HashMap<>();
     private String jailDimension = "";
     private double jailX, jailY, jailZ;
@@ -198,12 +199,47 @@ public final class PoliceData extends SavedData {
         PlayerTeam team = scoreboard.getPlayerTeam(POLICE_TEAM);
         if (team == null) team = scoreboard.addPlayerTeam(POLICE_TEAM);
         team.setPlayerPrefix(Component.literal("[Politi] ").withStyle(ChatFormatting.BLUE));
-        if (ranks.containsKey(player.getUUID())) {
+        if (ranks.containsKey(player.getUUID()) && onDuty.contains(player.getUUID())) {
             scoreboard.addPlayerToTeam(player.getScoreboardName(), team);
         } else if (player.getTeam() == team) {
             scoreboard.removePlayerFromTeam(player.getScoreboardName(), team);
         }
     }
+    public boolean isOnDuty(UUID id) { return onDuty.contains(id); }
+
+    public boolean toggleDuty(ServerPlayer player) {
+        UUID id = player.getUUID();
+        if (ranks.get(id) == null) return false;
+        if (onDuty.remove(id)) {
+            refreshPoliceTag(player);
+            logAction("Gikk av vakt", id, player.getGameProfile().getName(), player.getGameProfile().getName(), "");
+            return false;
+        }
+        onDuty.add(id);
+        refreshPoliceTag(player);
+        logAction("Gikk på vakt", id, player.getGameProfile().getName(), player.getGameProfile().getName(), "");
+        return true;
+    }
+
+    public void endDuty(ServerPlayer player) {
+        UUID id = player.getUUID();
+        if (onDuty.remove(id)) {
+            refreshPoliceTag(player);
+            logAction("Vakt avsluttet ved frakobling", id, player.getGameProfile().getName(),
+                player.getGameProfile().getName(), "Automatisk avlogging fra vakt");
+        }
+    }
+
+    public List<String> getOnDutyNames(MinecraftServer server) {
+        List<String> names = new ArrayList<>();
+        for (UUID id : onDuty) {
+            String name = server.getProfileCache().get(id).map(profile -> profile.getName()).orElse(id.toString());
+            names.add(name);
+        }
+        names.sort(String.CASE_INSENSITIVE_ORDER);
+        return names;
+    }
+
     public boolean removeRank(UUID id) { boolean changed = ranks.remove(id) != null; if (changed) setDirty(); return changed; }
     public Optional<PoliceRank> getRank(UUID id) { return Optional.ofNullable(ranks.get(id)); }
     public boolean isPolice(net.minecraft.commands.CommandSourceStack source) {
