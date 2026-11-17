@@ -35,6 +35,8 @@ public final class PoliceData extends SavedData {
     private long lastScheduleTick = Long.MIN_VALUE;
     private final Set<String> activeAlarms = new HashSet<>();
     private final List<String> alarmHistory = new ArrayList<>();
+    private final List<PoliceLogEntry> policeLog = new ArrayList<>();
+    public record PoliceLogEntry(long timestamp, String action, UUID targetId, String targetName, String actor, String details) {}
     public static final class JailCell {
         public String dimension = "";
         public double spawnX, spawnY, spawnZ;
@@ -96,6 +98,16 @@ public final class PoliceData extends SavedData {
         data.nightLockdown = tag.getBoolean("NightLockdown");
         ListTag alarms = tag.getList("AlarmHistory", 8);
         for (int i = 0; i < alarms.size(); i++) data.alarmHistory.add(alarms.getString(i));
+        ListTag logList = tag.getList("PoliceLog", 10);
+        for (int i = 0; i < logList.size(); i++) {
+            CompoundTag entry = logList.getCompound(i);
+            try {
+                String rawId = entry.getString("TargetUUID");
+                UUID targetId = rawId.isEmpty() ? null : UUID.fromString(rawId);
+                data.policeLog.add(new PoliceLogEntry(entry.getLong("Timestamp"), entry.getString("Action"), targetId,
+                    entry.getString("TargetName"), entry.getString("Actor"), entry.getString("Details")));
+            } catch (RuntimeException ignored) {}
+        }
         ListTag cellList = tag.getList("Cells", 10);
         for (int i=0; i<cellList.size(); i++) {
             CompoundTag c=cellList.getCompound(i); int id=c.getInt("Id");
@@ -154,6 +166,18 @@ public final class PoliceData extends SavedData {
         ListTag alarms = new ListTag();
         for (String alarm : alarmHistory) alarms.add(net.minecraft.nbt.StringTag.valueOf(alarm));
         tag.put("AlarmHistory", alarms);
+        ListTag logList = new ListTag();
+        for (PoliceLogEntry log : policeLog) {
+            CompoundTag entry = new CompoundTag();
+            entry.putLong("Timestamp", log.timestamp());
+            entry.putString("Action", log.action());
+            entry.putString("TargetUUID", log.targetId() == null ? "" : log.targetId().toString());
+            entry.putString("TargetName", log.targetName());
+            entry.putString("Actor", log.actor());
+            entry.putString("Details", log.details());
+            logList.add(entry);
+        }
+        tag.put("PoliceLog", logList);
         ListTag cellList=new ListTag();
         cells.forEach((id,c)->{
             CompoundTag entry=new CompoundTag(); entry.putInt("Id",id); entry.putString("Dimension",c.dimension);
@@ -276,6 +300,32 @@ public final class PoliceData extends SavedData {
     }
     public boolean isNightLockdown() { return nightLockdown; }
 
+    public void logAction(String action, UUID targetId, String targetName, String actor, String details) {
+        policeLog.add(0, new PoliceLogEntry(System.currentTimeMillis(), action,
+            targetId, targetName == null ? "" : targetName, actor == null ? "System" : actor,
+            details == null ? "" : details));
+        while (policeLog.size() > 200) policeLog.remove(policeLog.size() - 1);
+        setDirty();
+    }
+
+    public List<PoliceLogEntry> getPoliceLog(UUID targetId) {
+        return policeLog.stream().filter(entry -> targetId == null || targetId.equals(entry.targetId())).limit(20).toList();
+    }
+
+    public List<PoliceLogEntry> getArrestHistory(UUID targetId) {
+        return policeLog.stream().filter(entry -> targetId != null && targetId.equals(entry.targetId())
+            && (entry.action().equals("Arrestasjon") || entry.action().equals("Løslatelse"))).limit(20).toList();
+    }
+
+    public static String formatLogEntry(PoliceLogEntry entry) {
+        String time = java.time.Instant.ofEpochMilli(entry.timestamp())
+            .atZone(java.time.ZoneId.systemDefault())
+            .format(java.time.format.DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm"));
+        return time + " | " + entry.action() + " | " +
+            (entry.targetName().isBlank() ? "—" : entry.targetName()) + " | " +
+            entry.actor() + (entry.details().isBlank() ? "" : " | " + entry.details());
+    }
+
     public void triggerAlarm(ServerPlayer prisoner, String type) {
         String key = prisoner.getUUID() + ":" + type;
         if (!activeAlarms.add(key)) return;
@@ -378,9 +428,11 @@ public final class PoliceData extends SavedData {
         for (int id = 1; id <= 6; id++) {
             if (isCellConfigured(id) && !isCellOccupied(id)) { cellId = id; break; }
         }
+        if (prisoners.containsKey(player.getUUID())) return;
         prisoners.put(player.getUUID(), new Prisoner(prisonerName, reason, officer, releaseAt,
             returnDimension, player.getX(), player.getY(), player.getZ(), player.getYRot(), player.getXRot(), cellId));
         setDirty();
+        logAction("Arrestasjon", player.getUUID(), prisonerName, officer, minutes + " min | " + reason + " | celle " + cellId);
 
         Component announcement = Component.empty()
             .append(Component.literal("[HMN Fengsel] ").withStyle(ChatFormatting.BLUE, ChatFormatting.BOLD))
@@ -449,6 +501,7 @@ public final class PoliceData extends SavedData {
 
     private void releasePlayer(ServerPlayer player, Prisoner prisoner, String message) {
         prisoners.remove(player.getUUID());
+        logAction("Løslatelse", player.getUUID(), prisoner.name(), "System/Politi", prisoner.reason());
         setDirty();
 
         if (!prisoner.returnDimension().isEmpty()) {
