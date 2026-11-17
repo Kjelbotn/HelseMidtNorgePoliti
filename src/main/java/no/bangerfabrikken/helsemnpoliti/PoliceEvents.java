@@ -92,6 +92,70 @@ public final class PoliceEvents {
                     return entries.size();
                 })));
 
+        dispatcher.register(Commands.literal("politi")
+            .then(Commands.literal("hjelp").executes(context -> {
+                var source = context.getSource();
+                source.sendSuccess(() -> Component.literal("§9§lHMN POLITI – KOMMANDOOVERSIKT"), false);
+                source.sendSuccess(() -> Component.literal("§b/politi hjelp §7– viser denne oversikten"), false);
+                source.sendSuccess(() -> Component.literal("§b/politi status §7– viser pålogget politi og innsatte"), false);
+                source.sendSuccess(() -> Component.literal("§b/politi radio <melding> §7– sender melding på politiets samband"), false);
+                if (PoliceData.get(source.getServer()).isPolice(source)) {
+                    source.sendSuccess(() -> Component.literal("§e/jail <spiller> <minutter> <grunn> §7– sett i fengsel"), false);
+                    source.sendSuccess(() -> Component.literal("§e/unjail <spiller> §7– løslat en innsatt"), false);
+                    source.sendSuccess(() -> Component.literal("§e/jaillist §7– oversikt over innsatte"), false);
+                    source.sendSuccess(() -> Component.literal("§e/jailcheck <spiller> §7– sjekk fengselsstatus"), false);
+                    source.sendSuccess(() -> Component.literal("§e/politi alarm status|test|historikk §7– fengselsalarm"), false);
+                }
+                if (source.hasPermission(4)) {
+                    source.sendSuccess(() -> Component.literal("§c/politi gi|fjern|rang|liste §7– administrer politiranger"), false);
+                    source.sendSuccess(() -> Component.literal("§c/jailset, /jailarea og /jailcell §7– konfigurer fengselet"), false);
+                }
+                return Command.SINGLE_SUCCESS;
+            }))
+            .then(Commands.literal("radio")
+                .requires(source -> PoliceData.get(source.getServer()).isPolice(source))
+                .then(Commands.argument("melding", StringArgumentType.greedyString())
+                    .executes(context -> {
+                        var source = context.getSource();
+                        String message = StringArgumentType.getString(context, "melding").trim();
+                        if (message.isEmpty()) {
+                            source.sendFailure(Component.literal("Skriv en melding som skal sendes på sambandet."));
+                            return 0;
+                        }
+                        PoliceData data = PoliceData.get(source.getServer());
+                        String senderName = source.getTextName();
+                        String rank = source.getEntity() instanceof ServerPlayer player
+                            ? data.getRank(player.getUUID()).map(PoliceRank::displayName).orElse("Operatør")
+                            : "Operatør";
+                        Component radioMessage = Component.literal("§9§l[POLITIRADIO] §b" + rank + " " + senderName + " §8» §f" + message);
+                        int recipients = 0;
+                        for (ServerPlayer online : source.getServer().getPlayerList().getPlayers()) {
+                            if (online.hasPermissions(2) || data.getRank(online.getUUID()).isPresent()) {
+                                online.sendSystemMessage(radioMessage);
+                                recipients++;
+                            }
+                        }
+                        source.sendSuccess(() -> Component.literal("§aMeldingen ble sendt på politiets samband (" + recipients + " mottakere)."), false);
+                        return Command.SINGLE_SUCCESS;
+                    }))))
+            .then(Commands.literal("status")
+                .requires(source -> PoliceData.get(source.getServer()).isPolice(source))
+                .executes(context -> {
+                    var source = context.getSource();
+                    PoliceData data = PoliceData.get(source.getServer());
+                    var officers = source.getServer().getPlayerList().getPlayers().stream()
+                        .filter(player -> data.getRank(player.getUUID()).isPresent()).toList();
+                    var prisoners = data.listPrisoners();
+                    source.sendSuccess(() -> Component.literal("§9§lHMN POLITI – STATUS"), false);
+                    source.sendSuccess(() -> Component.literal("§bPålogget politi: §f" + officers.size()), false);
+                    officers.forEach(player -> source.sendSuccess(() -> Component.literal("§7• §b" + player.getGameProfile().getName()
+                        + " §8– §f" + data.getRank(player.getUUID()).map(PoliceRank::displayName).orElse("Politi")), false));
+                    source.sendSuccess(() -> Component.literal("§cInnsatte: §f" + prisoners.size()), false);
+                    prisoners.forEach(prisoner -> source.sendSuccess(() -> Component.literal("§7• §c" + prisoner.name()
+                        + " §8– §f" + prisoner.remaining() + " min igjen"), false));
+                    return Command.SINGLE_SUCCESS;
+                })));
+
         dispatcher.register(Commands.literal("jailcell")
             .then(Commands.literal("set")
                 .requires(source -> source.hasPermission(4))
