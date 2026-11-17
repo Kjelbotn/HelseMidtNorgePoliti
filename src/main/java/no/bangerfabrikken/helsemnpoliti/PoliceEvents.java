@@ -387,7 +387,11 @@ public final class PoliceEvents {
                     entries.forEach(entry -> context.getSource().sendSuccess(
                         () -> Component.literal("§7" + PoliceData.formatLogEntry(entry)), false));
                     return entries.size();
-                })
+                })));
+
+        dispatcher.register(Commands.literal("politi")
+            .then(Commands.literal("loggspiller")
+                .requires(source -> PoliceData.get(source.getServer()).isPolice(source))
                 .then(Commands.argument("spiller", EntityArgument.player()).executes(context -> {
                     ServerPlayer target = EntityArgument.getPlayer(context, "spiller");
                     var entries = PoliceData.get(context.getSource().getServer()).getPoliceLog(target.getUUID());
@@ -396,7 +400,9 @@ public final class PoliceEvents {
                     entries.forEach(entry -> context.getSource().sendSuccess(
                         () -> Component.literal("§7" + PoliceData.formatLogEntry(entry)), false));
                     return entries.size();
-                })))
+                }))));
+
+        dispatcher.register(Commands.literal("politi")
             .then(Commands.literal("arresthistorikk")
                 .requires(source -> PoliceData.get(source.getServer()).isPolice(source))
                 .then(Commands.argument("spiller", EntityArgument.player()).executes(context -> {
