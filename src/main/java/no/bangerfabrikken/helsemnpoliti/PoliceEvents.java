@@ -349,6 +349,37 @@ public final class PoliceEvents {
                     context.getSource().sendSuccess(() -> Component.literal(prisoner.map(p -> target.getGameProfile().getName() + " er fengslet. Gjenstående: " + p.remaining() + " min. Grunn: " + p.reason()).orElse(target.getGameProfile().getName() + " sitter ikke i fengsel.")), false);
                     return Command.SINGLE_SUCCESS;
                 })));
+        dispatcher.register(Commands.literal("politi")
+            .then(Commands.literal("logg")
+                .requires(source -> PoliceData.get(source.getServer()).isPolice(source))
+                .executes(context -> {
+                    var entries = PoliceData.get(context.getSource().getServer()).getPoliceLog(null);
+                    context.getSource().sendSuccess(() -> Component.literal("§9§lPOLITILOGG §7(siste " + entries.size() + ")"), false);
+                    if (entries.isEmpty()) context.getSource().sendSuccess(() -> Component.literal("§7Ingen hendelser er registrert ennå."), false);
+                    entries.forEach(entry -> context.getSource().sendSuccess(
+                        () -> Component.literal("§7" + PoliceData.formatLogEntry(entry)), false));
+                    return entries.size();
+                })
+                .then(Commands.argument("spiller", EntityArgument.player()).executes(context -> {
+                    ServerPlayer target = EntityArgument.getPlayer(context, "spiller");
+                    var entries = PoliceData.get(context.getSource().getServer()).getPoliceLog(target.getUUID());
+                    context.getSource().sendSuccess(() -> Component.literal("§9§lPOLITILOGG §7– " + target.getGameProfile().getName()), false);
+                    if (entries.isEmpty()) context.getSource().sendSuccess(() -> Component.literal("§7Ingen loggførte hendelser for spilleren."), false);
+                    entries.forEach(entry -> context.getSource().sendSuccess(
+                        () -> Component.literal("§7" + PoliceData.formatLogEntry(entry)), false));
+                    return entries.size();
+                })))
+            .then(Commands.literal("arresthistorikk")
+                .requires(source -> PoliceData.get(source.getServer()).isPolice(source))
+                .then(Commands.argument("spiller", EntityArgument.player()).executes(context -> {
+                    ServerPlayer target = EntityArgument.getPlayer(context, "spiller");
+                    var entries = PoliceData.get(context.getSource().getServer()).getArrestHistory(target.getUUID());
+                    context.getSource().sendSuccess(() -> Component.literal("§c§lARRESTHISTORIKK §7– " + target.getGameProfile().getName()), false);
+                    if (entries.isEmpty()) context.getSource().sendSuccess(() -> Component.literal("§7Ingen tidligere arrestasjoner eller løslatelser registrert."), false);
+                    entries.forEach(entry -> context.getSource().sendSuccess(
+                        () -> Component.literal("§7" + PoliceData.formatLogEntry(entry)), false));
+                    return entries.size();
+                })));
     }
 
     @SubscribeEvent
