@@ -46,6 +46,7 @@ public final class PoliceEvents {
                             }
                             PoliceData data = PoliceData.get(context.getSource().getServer());
                             data.setRank(target.getUUID(), rank.get());
+                            data.logAction("Rang tildelt", target.getUUID(), target.getGameProfile().getName(), context.getSource().getTextName(), rank.get().displayName());
                             data.refreshPoliceTag(target);
                             context.getSource().sendSuccess(() -> Component.literal("§a" + target.getGameProfile().getName() + " er nå " + rank.get().displayName() + "."), true);
                             target.sendSystemMessage(Component.literal("§9[HMN Politi] §fDu er utnevnt til " + rank.get().displayName() + "."));
@@ -128,6 +129,7 @@ public final class PoliceEvents {
                             ? data.getRank(player.getUUID()).map(PoliceRank::displayName).orElse("Operatør")
                             : "Operatør";
                         Component radioMessage = Component.literal("§9§l[POLITIRADIO] §b" + rank + " " + senderName + " §8» §f" + message);
+                        data.logAction("Radiosamband", null, "", senderName, message);
                         int recipients = 0;
                         for (ServerPlayer online : source.getServer().getPlayerList().getPlayers()) {
                             if (online.hasPermissions(2) || data.getRank(online.getUUID()).isPresent()) {
