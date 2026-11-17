@@ -416,6 +416,32 @@ public final class PoliceEvents {
                 }))));
     }
 
+        dispatcher.register(Commands.literal("politi")
+            .then(Commands.literal("sjekk")
+                .requires(source -> PoliceData.get(source.getServer()).isPolice(source))
+                .then(Commands.argument("spiller", EntityArgument.player()).executes(context -> {
+                    ServerPlayer target = EntityArgument.getPlayer(context, "spiller");
+                    PoliceData data = PoliceData.get(context.getSource().getServer());
+                    String name = target.getGameProfile().getName();
+                    String uuid = target.getUUID().toString();
+                    String rank = data.getRank(target.getUUID())
+                        .map(PoliceRank::displayName).orElse("Ingen");
+                    var prisoner = data.getPrisoner(target.getUUID());
+                    var arrests = data.getArrestHistory(target.getUUID());
+                    context.getSource().sendSuccess(() -> Component.literal("§9§lIDENTITETSKONTROLL §7– " + name), false);
+                    context.getSource().sendSuccess(() -> Component.literal("§7Spiller: §f" + name + " §a(tilkoblet)"), false);
+                    context.getSource().sendSuccess(() -> Component.literal("§7UUID: §f" + uuid), false);
+                    context.getSource().sendSuccess(() -> Component.literal("§7Politirang: §f" + rank
+                        + (data.isOnDuty(target.getUUID()) ? " §a(på vakt)" : "")), false);
+                    context.getSource().sendSuccess(() -> Component.literal(prisoner
+                        .map(p -> "§7Fengselsstatus: §cInnsatt – " + p.remaining() + " min igjen. Grunn: " + p.reason())
+                        .orElse("§7Fengselsstatus: §aIkke innsatt")), false);
+                    context.getSource().sendSuccess(() -> Component.literal("§7Registrerte arrest-/løslatelseshendelser: §f" + arrests.size()), false);
+                    data.logAction("Identitetskontroll", target.getUUID(), name,
+                        context.getSource().getTextName(), "Kontrollert av politiet");
+                    return Command.SINGLE_SUCCESS;
+                }))));
+
     @SubscribeEvent
     public static void onLogin(PlayerEvent.PlayerLoggedInEvent event) {
         if (!(event.getEntity() instanceof ServerPlayer player)) return;
