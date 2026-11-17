@@ -135,7 +135,8 @@ public final class PoliceEvents {
                                 recipients++;
                             }
                         }
-                        source.sendSuccess(() -> Component.literal("§aMeldingen ble sendt på politiets samband (" + recipients + " mottakere)."), false);
+                        final int recipientCount = recipients;
+                        source.sendSuccess(() -> Component.literal("§aMeldingen ble sendt på politiets samband (" + recipientCount + " mottakere)."), false);
                         return Command.SINGLE_SUCCESS;
                     }))))
             .then(Commands.literal("status")
