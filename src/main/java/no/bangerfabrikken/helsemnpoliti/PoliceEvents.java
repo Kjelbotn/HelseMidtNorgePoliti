@@ -255,6 +255,26 @@ public final class PoliceEvents {
                 return prisoners.size();
             }));
 
+        dispatcher.register(Commands.literal("politi")
+            .then(Commands.literal("alarm")
+                .requires(source -> PoliceData.get(source.getServer()).isPolice(source))
+                .then(Commands.literal("status").executes(context -> {
+                    context.getSource().sendSuccess(() -> Component.literal("§cHMN fengselsalarm er aktiv. Rømningsforsøk varsles og innsatte returneres umiddelbart."), false);
+                    return Command.SINGLE_SUCCESS;
+                }))
+                .then(Commands.literal("test").executes(context -> {
+                    ServerPlayer sender = context.getSource().getPlayerOrException();
+                    PoliceData.get(context.getSource().getServer()).testAlarm(sender);
+                    context.getSource().sendSuccess(() -> Component.literal("§aAlarmtest sendt til tilgjengelig politi og OP."), false);
+                    return Command.SINGLE_SUCCESS;
+                }))
+                .then(Commands.literal("historikk").executes(context -> {
+                    var history = PoliceData.get(context.getSource().getServer()).getAlarmHistory();
+                    if (history.isEmpty()) context.getSource().sendSuccess(() -> Component.literal("Ingen registrerte fengselsalarmer."), false);
+                    else history.stream().limit(10).forEach(line -> context.getSource().sendSuccess(() -> Component.literal("§c" + line), false));
+                    return history.size();
+                }))));
+
         dispatcher.register(Commands.literal("jailcheck")
             .requires(source -> PoliceData.get(source.getServer()).isPolice(source))
             .then(Commands.argument("spiller", EntityArgument.player())
@@ -286,6 +306,7 @@ public final class PoliceEvents {
         if (event.getPlayer() instanceof ServerPlayer player
             && PoliceData.get(player.getServer()).isJailed(player.getUUID())) {
             event.setCanceled(true);
+            PoliceData.get(player.getServer()).triggerAlarm(player, "Forsøk på å ødelegge blokk i fengselet");
             player.displayClientMessage(Component.literal("§cDu kan ikke ødelegge blokker mens du sitter i fengsel."), true);
         }
     }
@@ -321,6 +342,7 @@ public final class PoliceEvents {
             if (data.isConfiguredCellDoor(player.level().dimension(), event.getPos())) {
                 if (!data.canUseCellDoor(player.getUUID(), player.level().dimension(), event.getPos())) {
                     event.setCanceled(true);
+                    if (data.isNightLockdown()) data.triggerAlarm(player, "Forsøk på å åpne låst celledør");
                     player.displayClientMessage(Component.literal(data.isNightLockdown()
                         ? "§cCellen er låst for natten." : "§cDette er ikke din celle."), true);
                 }
