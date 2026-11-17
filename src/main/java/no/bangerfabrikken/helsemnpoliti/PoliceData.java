@@ -240,7 +240,7 @@ public final class PoliceData extends SavedData {
         return names;
     }
 
-    public boolean removeRank(UUID id) { boolean changed = ranks.remove(id) != null; if (changed) setDirty(); return changed; }
+    public boolean removeRank(UUID id) { boolean changed = ranks.remove(id) != null; onDuty.remove(id); if (changed) setDirty(); return changed; }
     public Optional<PoliceRank> getRank(UUID id) { return Optional.ofNullable(ranks.get(id)); }
     public boolean isPolice(net.minecraft.commands.CommandSourceStack source) {
         if (source.hasPermission(4)) return true;
