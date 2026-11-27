@@ -703,7 +703,8 @@ public final class PoliceEvents {
         try {
             Class<?> apiClass = Class.forName("dev.ftb.mods.ftbchunks.api.FTBChunksAPI");
             Object api = apiClass.getMethod("api").invoke(null);
-            Object manager = api.getClass().getMethod("getManager").invoke(api);
+            Class<?> apiInterface = Class.forName("dev.ftb.mods.ftbchunks.api.FTBChunksAPI$API");
+            Object manager = apiInterface.getMethod("getManager").invoke(api);
             Class<?> protectionClass = Class.forName("dev.ftb.mods.ftbchunks.api.Protection");
             Object protection = protectionClass.getField("INTERACT_BLOCK").get(null);
             Class<?> managerInterface = Class.forName("dev.ftb.mods.ftbchunks.api.ClaimedChunkManager");
