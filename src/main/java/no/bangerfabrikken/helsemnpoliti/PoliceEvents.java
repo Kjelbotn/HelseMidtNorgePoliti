@@ -399,14 +399,15 @@ public final class PoliceEvents {
                     var source = context.getSource();
                     String playerName = target.getGameProfile().getName();
 
-                    source.sendSuccess(() -> Component.literal("§8§m━━━━━━━━━━━━━━━━━━━━━━━━"), false);
-                    source.sendSuccess(() -> Component.literal("§9§l       ARRESTHISTORIKK"), false);
-                    source.sendSuccess(() -> Component.literal("§b             " + playerName), false);
-                    source.sendSuccess(() -> Component.literal("§8§m━━━━━━━━━━━━━━━━━━━━━━━━"), false);
+                    source.sendSuccess(() -> Component.literal("§1§m━━━━━━━━━━━━━━━━━━━━━━━━"), false);
+                    source.sendSuccess(() -> Component.literal("§9§l       HMN POLITI"), false);
+                    source.sendSuccess(() -> Component.literal("§b       ARRESTHISTORIKK"), false);
+                    source.sendSuccess(() -> Component.literal("§f             " + playerName), false);
+                    source.sendSuccess(() -> Component.literal("§1§m━━━━━━━━━━━━━━━━━━━━━━━━"), false);
 
                     if (entries.isEmpty()) {
                         source.sendSuccess(() -> Component.literal("§7Ingen tidligere arrestasjoner registrert."), false);
-                        source.sendSuccess(() -> Component.literal("§8§m━━━━━━━━━━━━━━━━━━━━━━━━"), false);
+                        source.sendSuccess(() -> Component.literal("§1§m━━━━━━━━━━━━━━━━━━━━━━━━"), false);
                         return 0;
                     }
 
@@ -422,20 +423,20 @@ public final class PoliceEvents {
                         String reason = details.length > 1 && !details[1].isBlank() ? details[1] : "Ikke oppgitt";
                         String cell = details.length > 2 && !details[2].isBlank() ? details[2] : "";
 
-                        source.sendSuccess(() -> Component.literal("§e§l[" + number + "] §f" + date), false);
-                        source.sendSuccess(() -> Component.literal(" §7Varighet: §f" + duration
-                            + " §8| §7Grunn: §f" + reason), false);
+                        source.sendSuccess(() -> Component.literal("§9§l[" + number + "] §f" + date), false);
+                        source.sendSuccess(() -> Component.literal(" §bVarighet: §f" + duration), false);
+                        source.sendSuccess(() -> Component.literal(" §bGrunn: §f" + reason), false);
                         if (!cell.isBlank()) {
-                            source.sendSuccess(() -> Component.literal(" §7" + cell), false);
+                            source.sendSuccess(() -> Component.literal(" §b" + cell), false);
                         }
                         if (number < entries.size()) {
-                            source.sendSuccess(() -> Component.literal("§8────────────────────────"), false);
+                            source.sendSuccess(() -> Component.literal("§1§m────────────────────────"), false);
                         }
                     }
 
-                    source.sendSuccess(() -> Component.literal("§8§m━━━━━━━━━━━━━━━━━━━━━━━━"), false);
-                    source.sendSuccess(() -> Component.literal("§7Totalt antall arrestasjoner: §e§l" + entries.size()), false);
-                    source.sendSuccess(() -> Component.literal("§8§m━━━━━━━━━━━━━━━━━━━━━━━━"), false);
+                    source.sendSuccess(() -> Component.literal("§1§m━━━━━━━━━━━━━━━━━━━━━━━━"), false);
+                    source.sendSuccess(() -> Component.literal("§bTotalt antall arrestasjoner: §f§l" + entries.size()), false);
+                    source.sendSuccess(() -> Component.literal("§1§m━━━━━━━━━━━━━━━━━━━━━━━━"), false);
                     return entries.size();
                 }))));
 
