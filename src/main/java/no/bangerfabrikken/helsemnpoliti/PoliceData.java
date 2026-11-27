@@ -7,6 +7,7 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.saveddata.SavedData;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.level.Level;
@@ -24,6 +25,7 @@ public final class PoliceData extends SavedData {
     private final Map<UUID, PoliceRank> ranks = new HashMap<>();
     private final Set<UUID> onDuty = new HashSet<>();
     private final Map<UUID, Prisoner> prisoners = new HashMap<>();
+    private final Map<UUID, ListTag> savedInventories = new HashMap<>();
     private final Map<UUID, Long> lastActive = new HashMap<>();
     private String jailDimension = "";
     private double jailX, jailY, jailZ;
@@ -84,6 +86,14 @@ public final class PoliceData extends SavedData {
                     entry.getString("Officer"), entry.getLong("ReleaseAt"),
                     entry.getString("ReturnDimension"), entry.getDouble("ReturnX"), entry.getDouble("ReturnY"),
                     entry.getDouble("ReturnZ"), entry.getFloat("ReturnYaw"), entry.getFloat("ReturnPitch"), entry.getInt("CellId")));
+            } catch (RuntimeException ignored) {}
+        }
+        ListTag inventoryList = tag.getList("SavedInventories", 10);
+        for (int i = 0; i < inventoryList.size(); i++) {
+            CompoundTag entry = inventoryList.getCompound(i);
+            try {
+                UUID id = UUID.fromString(entry.getString("UUID"));
+                data.savedInventories.put(id, entry.getList("Items", 10).copy());
             } catch (RuntimeException ignored) {}
         }
         ListTag activityList = tag.getList("LastActive", 10);
@@ -161,6 +171,14 @@ public final class PoliceData extends SavedData {
             jailList.add(entry);
         });
         tag.put("Prisoners", jailList);
+        ListTag inventoryList = new ListTag();
+        savedInventories.forEach((uuid, items) -> {
+            CompoundTag entry = new CompoundTag();
+            entry.putString("UUID", uuid.toString());
+            entry.put("Items", items.copy());
+            inventoryList.add(entry);
+        });
+        tag.put("SavedInventories", inventoryList);
         ListTag activityList = new ListTag();
         lastActive.forEach((uuid, timestamp) -> {
             CompoundTag entry = new CompoundTag();
@@ -492,6 +510,22 @@ public final class PoliceData extends SavedData {
             if (isCellConfigured(id) && !isCellOccupied(id)) { cellId = id; break; }
         }
         if (prisoners.containsKey(player.getUUID())) return;
+
+        // Save every inventory slot, including armor and offhand, before clearing it.
+        ListTag inventorySnapshot = new ListTag();
+        var inventory = player.getInventory();
+        for (int slot = 0; slot < inventory.getContainerSize(); slot++) {
+            ItemStack stack = inventory.getItem(slot);
+            if (stack.isEmpty()) continue;
+            CompoundTag itemEntry = new CompoundTag();
+            itemEntry.putInt("Slot", slot);
+            itemEntry.put("Stack", stack.save(player.registryAccess()));
+            inventorySnapshot.add(itemEntry);
+        }
+        savedInventories.put(player.getUUID(), inventorySnapshot);
+        inventory.clearContent();
+        player.containerMenu.setCarried(ItemStack.EMPTY);
+
         prisoners.put(player.getUUID(), new Prisoner(prisonerName, reason, officer, releaseAt,
             returnDimension, player.getX(), player.getY(), player.getZ(), player.getYRot(), player.getXRot(), cellId));
         setDirty();
@@ -576,6 +610,25 @@ public final class PoliceData extends SavedData {
                     Set.of(), prisoner.returnYaw(), prisoner.returnPitch());
             }
         }
+
+        // Restore the exact inventory snapshot once the player is released.
+        ListTag inventorySnapshot = savedInventories.remove(player.getUUID());
+        if (inventorySnapshot != null) {
+            var inventory = player.getInventory();
+            inventory.clearContent();
+            for (int i = 0; i < inventorySnapshot.size(); i++) {
+                CompoundTag itemEntry = inventorySnapshot.getCompound(i);
+                int slot = itemEntry.getInt("Slot");
+                if (slot < 0 || slot >= inventory.getContainerSize()) continue;
+                ItemStack.parse(player.registryAccess(), itemEntry.getCompound("Stack"))
+                    .ifPresent(stack -> inventory.setItem(slot, stack));
+            }
+            inventory.setChanged();
+            player.containerMenu.setCarried(ItemStack.EMPTY);
+            player.inventoryMenu.broadcastChanges();
+            player.containerMenu.broadcastChanges();
+        }
+        setDirty();
 
         player.displayClientMessage(Component.empty(), true);
         player.sendSystemMessage(Component.literal(message));
