@@ -186,6 +186,51 @@ public final class PoliceEvents {
                     return names.size();
                 })));
 
+        dispatcher.register(Commands.literal("politi")
+            .then(Commands.literal("tp")
+                .requires(source -> PoliceData.get(source.getServer()).isPolice(source))
+                .then(Commands.argument("spiller", EntityArgument.player())
+                    .executes(context -> {
+                        ServerPlayer officer = context.getSource().getPlayerOrException();
+                        ServerPlayer target = EntityArgument.getPlayer(context, "spiller");
+                        PoliceData data = PoliceData.get(context.getSource().getServer());
+                        var officerRank = data.getRank(officer.getUUID());
+                        var targetRank = data.getRank(target.getUUID());
+                        boolean officerIsOp = officer.hasPermissions(2);
+                        boolean targetIsOp = target.hasPermissions(2);
+
+                        if (!officerIsOp && (targetIsOp
+                            || (officerRank.isPresent() && targetRank.isPresent()
+                                && targetRank.get().ordinal() > officerRank.get().ordinal()))) {
+                            officer.sendSystemMessage(Component.literal(
+                                "Du kan ikke teleportere til noen som har høyere rang enn deg selv.")
+                                .withStyle(net.minecraft.ChatFormatting.RED));
+                            return 0;
+                        }
+                        if (!officerIsOp && officerRank.isEmpty()) {
+                            officer.sendSystemMessage(Component.literal("Du må ha politirang for å bruke denne kommandoen.")
+                                .withStyle(net.minecraft.ChatFormatting.RED));
+                            return 0;
+                        }
+
+                        officer.teleportTo(target.serverLevel(), target.getX(), target.getY(), target.getZ(),
+                            java.util.Set.of(), target.getYRot(), target.getXRot());
+
+                        String officerName = officer.getGameProfile().getName();
+                        String targetName = target.getGameProfile().getName();
+                        data.logAction("Polititeleportering", target.getUUID(), targetName, officerName,
+                            "Teleporterte til " + targetName);
+                        Component notice = Component.literal("[HMN Politi] " + officerName
+                            + " teleporterte til " + targetName + ".")
+                            .withStyle(net.minecraft.ChatFormatting.RED);
+                        for (ServerPlayer online : context.getSource().getServer().getPlayerList().getPlayers()) {
+                            if (online.hasPermissions(2)) online.sendSystemMessage(notice);
+                        }
+                        officer.sendSystemMessage(Component.literal("Du teleporterte til " + targetName + ".")
+                            .withStyle(net.minecraft.ChatFormatting.GREEN));
+                        return Command.SINGLE_SUCCESS;
+                    }))));
+
         dispatcher.register(Commands.literal("jailcell")
             .then(Commands.literal("set")
                 .requires(source -> source.hasPermission(4))
