@@ -52,6 +52,19 @@ processResources {
     }
 }
 
+repositories {
+    maven { url = 'https://www.cursemaven.com' }
+}
+
+dependencies {
+    // FTB Chunks 1.21.1 API, used by the targeted claim-protection mixin.
+    compileOnly "curse.maven:ftb-chunks-forge-314906:9594476"
+
+    // Mixin annotations and refmap generation.
+    compileOnly "org.spongepowered:mixin:0.8.7"
+    annotationProcessor "org.spongepowered:mixin:0.8.7:processor"
+}
+
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
 }
