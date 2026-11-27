@@ -530,6 +530,9 @@ public final class PoliceEvents {
                         context.getSource().getTextName(), "Kontrollert av politiet");
                     return Command.SINGLE_SUCCESS;
                 }))));
+        // Kort alias for alle /politi-kommandoer.
+        dispatcher.register(Commands.literal("p").redirect(dispatcher.getRoot().getChild("politi")));
+
     }
 
     @SubscribeEvent
