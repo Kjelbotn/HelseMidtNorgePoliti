@@ -11,7 +11,6 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.bus.api.EventPriority;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
@@ -20,10 +19,6 @@ import net.minecraft.world.level.block.TrapDoorBlock;
 import net.minecraft.world.level.block.FenceGateBlock;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.network.protocol.game.ClientboundContainerSetSlotPacket;
-import net.minecraft.world.entity.Entity;
-import net.minecraft.world.InteractionHand;
-import net.minecraft.core.BlockPos;
-import net.neoforged.fml.ModList;
 
 public final class PoliceEvents {
     private PoliceEvents() {}
@@ -681,7 +676,7 @@ public final class PoliceEvents {
      * when the player is a registered officer currently on duty. The FTB API
      * check ensures this handler does not override unrelated cancellations.
      */
-    @SubscribeEvent(priority = EventPriority.NORMAL, receiveCanceled = true)
+    @SubscribeEvent(priority = EventPriority.LOWEST, receiveCanceled = true)
     public static void onOnDutyPoliceClaimDoorInteract(PlayerInteractEvent.RightClickBlock event) {
         if (!(event.getEntity() instanceof ServerPlayer player) || !event.isCanceled()) return;
 
@@ -693,27 +688,9 @@ public final class PoliceEvents {
 
         // Do not turn a protected block-placement attempt into an allowed interaction.
         if (player.getItemInHand(event.getHand()).getItem() instanceof BlockItem) return;
-        if (!isFtbChunksBlockingDoorInteraction(player, event.getHand(), event.getPos())) return;
-
+        // FTB Chunks cancels the interaction earlier in the event chain. Run last
+        // and only undo cancellation for door-like blocks used by on-duty officers.
         event.setCanceled(false);
-    }
-
-    private static boolean isFtbChunksBlockingDoorInteraction(ServerPlayer player, InteractionHand hand, BlockPos pos) {
-        if (!ModList.get().isLoaded("ftbchunks")) return false;
-        try {
-            Class<?> apiClass = Class.forName("dev.ftb.mods.ftbchunks.api.FTBChunksAPI");
-            Object api = apiClass.getMethod("api").invoke(null);
-            Class<?> apiInterface = Class.forName("dev.ftb.mods.ftbchunks.api.FTBChunksAPI$API");
-            Object manager = apiInterface.getMethod("getManager").invoke(api);
-            Class<?> protectionClass = Class.forName("dev.ftb.mods.ftbchunks.api.Protection");
-            Object protection = protectionClass.getField("INTERACT_BLOCK").get(null);
-            Class<?> managerInterface = Class.forName("dev.ftb.mods.ftbchunks.api.ClaimedChunkManager");
-            var method = managerInterface.getMethod("shouldPreventInteraction",
-                Entity.class, InteractionHand.class, BlockPos.class, protectionClass, Entity.class);
-            return Boolean.TRUE.equals(method.invoke(manager, player, hand, pos, protection, null));
-        } catch (ReflectiveOperationException | LinkageError exception) {
-            return false;
-        }
     }
 
     private static void syncPrisonerInventory(ServerPlayer player) {
