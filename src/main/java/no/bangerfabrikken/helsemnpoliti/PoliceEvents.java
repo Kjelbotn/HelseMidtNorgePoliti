@@ -670,29 +670,6 @@ public final class PoliceEvents {
     }
 
 
-    /**
-     * FTB Chunks cancels protected block interactions at HIGHEST priority.
-     * At NORMAL priority we only undo that cancellation for a door-like block
-     * when the player is a registered officer currently on duty. The FTB API
-     * check ensures this handler does not override unrelated cancellations.
-     */
-    @SubscribeEvent(priority = EventPriority.LOWEST, receiveCanceled = true)
-    public static void onOnDutyPoliceClaimDoorInteract(PlayerInteractEvent.RightClickBlock event) {
-        if (!(event.getEntity() instanceof ServerPlayer player) || !event.isCanceled()) return;
-
-        PoliceData data = PoliceData.get(player.getServer());
-        if (!data.isOnDuty(player.getUUID()) || data.isJailed(player.getUUID())) return;
-
-        var block = event.getLevel().getBlockState(event.getPos()).getBlock();
-        if (!(block instanceof DoorBlock || block instanceof TrapDoorBlock || block instanceof FenceGateBlock)) return;
-
-        // Do not turn a protected block-placement attempt into an allowed interaction.
-        if (player.getItemInHand(event.getHand()).getItem() instanceof BlockItem) return;
-        // FTB Chunks cancels the interaction earlier in the event chain. Run last
-        // and only undo cancellation for door-like blocks used by on-duty officers.
-        event.setCanceled(false);
-    }
-
     private static void syncPrisonerInventory(ServerPlayer player) {
         var inventory = player.getInventory();
         int selectedSlot = inventory.selected;
