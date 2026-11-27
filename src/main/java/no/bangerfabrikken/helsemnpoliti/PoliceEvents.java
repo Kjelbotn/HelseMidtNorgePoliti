@@ -395,11 +395,47 @@ public final class PoliceEvents {
                 .requires(source -> PoliceData.get(source.getServer()).isPolice(source))
                 .then(Commands.argument("spiller", EntityArgument.player()).executes(context -> {
                     ServerPlayer target = EntityArgument.getPlayer(context, "spiller");
-                    var entries = PoliceData.get(context.getSource().getServer()).getPoliceLog(target.getUUID());
-                    context.getSource().sendSuccess(() -> Component.literal("§9§lPOLITILOGG §7– " + target.getGameProfile().getName()), false);
-                    if (entries.isEmpty()) context.getSource().sendSuccess(() -> Component.literal("§7Ingen loggførte hendelser for spilleren."), false);
-                    entries.forEach(entry -> context.getSource().sendSuccess(
-                        () -> Component.literal("§7" + PoliceData.formatLogEntry(entry)), false));
+                    var entries = PoliceData.get(context.getSource().getServer()).getArrestHistory(target.getUUID());
+                    var source = context.getSource();
+                    String playerName = target.getGameProfile().getName();
+
+                    source.sendSuccess(() -> Component.literal("§8§m━━━━━━━━━━━━━━━━━━━━━━━━"), false);
+                    source.sendSuccess(() -> Component.literal("§9§l       ARRESTHISTORIKK"), false);
+                    source.sendSuccess(() -> Component.literal("§b             " + playerName), false);
+                    source.sendSuccess(() -> Component.literal("§8§m━━━━━━━━━━━━━━━━━━━━━━━━"), false);
+
+                    if (entries.isEmpty()) {
+                        source.sendSuccess(() -> Component.literal("§7Ingen tidligere arrestasjoner registrert."), false);
+                        source.sendSuccess(() -> Component.literal("§8§m━━━━━━━━━━━━━━━━━━━━━━━━"), false);
+                        return 0;
+                    }
+
+                    java.time.format.DateTimeFormatter dateFormat =
+                        java.time.format.DateTimeFormatter.ofPattern("dd.MM.yyyy 'kl.' HH:mm");
+                    for (int i = 0; i < entries.size(); i++) {
+                        var entry = entries.get(i);
+                        final int number = i + 1;
+                        String date = java.time.Instant.ofEpochMilli(entry.timestamp())
+                            .atZone(java.time.ZoneId.systemDefault()).format(dateFormat);
+                        String[] details = entry.details().split("\\s*\\|\\s*", 3);
+                        String duration = details.length > 0 && !details[0].isBlank() ? details[0] : "Ukjent";
+                        String reason = details.length > 1 && !details[1].isBlank() ? details[1] : "Ikke oppgitt";
+                        String cell = details.length > 2 && !details[2].isBlank() ? details[2] : "";
+
+                        source.sendSuccess(() -> Component.literal("§e§l[" + number + "] §f" + date), false);
+                        source.sendSuccess(() -> Component.literal(" §7Varighet: §f" + duration
+                            + " §8| §7Grunn: §f" + reason), false);
+                        if (!cell.isBlank()) {
+                            source.sendSuccess(() -> Component.literal(" §7" + cell), false);
+                        }
+                        if (number < entries.size()) {
+                            source.sendSuccess(() -> Component.literal("§8────────────────────────"), false);
+                        }
+                    }
+
+                    source.sendSuccess(() -> Component.literal("§8§m━━━━━━━━━━━━━━━━━━━━━━━━"), false);
+                    source.sendSuccess(() -> Component.literal("§7Totalt antall arrestasjoner: §e§l" + entries.size()), false);
+                    source.sendSuccess(() -> Component.literal("§8§m━━━━━━━━━━━━━━━━━━━━━━━━"), false);
                     return entries.size();
                 }))));
 
