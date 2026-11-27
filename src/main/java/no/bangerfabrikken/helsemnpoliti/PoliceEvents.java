@@ -426,9 +426,6 @@ public final class PoliceEvents {
                         source.sendSuccess(() -> Component.literal("§9§l[" + number + "] §f" + date), false);
                         source.sendSuccess(() -> Component.literal(" §bVarighet: §f" + duration), false);
                         source.sendSuccess(() -> Component.literal(" §bGrunn: §f" + reason), false);
-                        if (!cell.isBlank()) {
-                            source.sendSuccess(() -> Component.literal(" §b" + cell), false);
-                        }
                         if (number < entries.size()) {
                             source.sendSuccess(() -> Component.literal("§1§m────────────────────────"), false);
                         }
