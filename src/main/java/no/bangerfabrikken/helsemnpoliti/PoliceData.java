@@ -8,6 +8,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.saveddata.SavedData;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.level.Level;
@@ -525,6 +526,15 @@ public final class PoliceData extends SavedData {
         savedInventories.put(player.getUUID(), inventorySnapshot);
         inventory.clearContent();
         player.containerMenu.setCarried(ItemStack.EMPTY);
+
+        // Basic food and water for the prison sentence: hotbar slots are zero-based.
+        inventory.setItem(8, new ItemStack(Items.BREAD, 10)); // Hotbar slot 9
+        inventory.setItem(5, new ItemStack(Items.WATER_BUCKET)); // Hotbar slot 6
+        inventory.setItem(6, new ItemStack(Items.WATER_BUCKET)); // Hotbar slot 7
+        inventory.setItem(7, new ItemStack(Items.WATER_BUCKET)); // Hotbar slot 8
+        inventory.setChanged();
+        player.inventoryMenu.broadcastChanges();
+        player.containerMenu.broadcastChanges();
 
         prisoners.put(player.getUUID(), new Prisoner(prisonerName, reason, officer, releaseAt,
             returnDimension, player.getX(), player.getY(), player.getZ(), player.getYRot(), player.getXRot(), cellId));
