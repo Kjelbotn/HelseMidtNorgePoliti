@@ -9,6 +9,7 @@ import net.minecraft.commands.arguments.GameProfileArgument;
 import net.minecraft.commands.arguments.coordinates.BlockPosArgument;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.item.ItemStack;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
@@ -535,6 +536,31 @@ public final class PoliceEvents {
         // Direkte alias for politiets teleportkommando.
         dispatcher.register(Commands.literal("ptp").redirect(
             dispatcher.getRoot().getChild("politi").getChild("tp")));
+
+        dispatcher.register(Commands.literal("politi")
+            .then(Commands.literal("batong")
+                .requires(source -> PoliceData.get(source.getServer()).isPolice(source))
+                .executes(context -> {
+                    ServerPlayer officer = context.getSource().getPlayerOrException();
+                    ItemStack baton = new ItemStack(net.minecraft.world.item.Items.STICK);
+                    baton.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME,
+                        Component.literal("Politibatong").withStyle(net.minecraft.ChatFormatting.GOLD,
+                            net.minecraft.ChatFormatting.BOLD));
+                    var knockback = officer.registryAccess()
+                        .lookupOrThrow(net.minecraft.core.registries.Registries.ENCHANTMENT)
+                        .getOrThrow(net.minecraft.world.item.enchantment.Enchantments.KNOCKBACK);
+                    baton.enchant(knockback, 2);
+
+                    if (!officer.getInventory().add(baton)) {
+                        officer.drop(baton, false);
+                    }
+                    PoliceData.get(context.getSource().getServer()).logAction(
+                        "Politibatong utlevert", officer.getUUID(), officer.getGameProfile().getName(),
+                        officer.getGameProfile().getName(), "Knockback II");
+                    officer.sendSystemMessage(Component.literal(
+                        "§aDu har fått en politibatong med Knockback II."));
+                    return Command.SINGLE_SUCCESS;
+                })));
 
     }
 
