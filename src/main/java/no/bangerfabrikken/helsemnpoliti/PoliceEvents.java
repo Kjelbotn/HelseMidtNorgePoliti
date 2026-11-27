@@ -421,7 +421,6 @@ public final class PoliceEvents {
                         String[] details = entry.details().split("\\s*\\|\\s*", 3);
                         String duration = details.length > 0 && !details[0].isBlank() ? details[0] : "Ukjent";
                         String reason = details.length > 1 && !details[1].isBlank() ? details[1] : "Ikke oppgitt";
-                        String cell = details.length > 2 && !details[2].isBlank() ? details[2] : "";
 
                         source.sendSuccess(() -> Component.literal("§9§l[" + number + "] §f" + date), false);
                         source.sendSuccess(() -> Component.literal(" §bVarighet: §f" + duration), false);
