@@ -532,6 +532,9 @@ public final class PoliceEvents {
                 }))));
         // Kort alias for alle /politi-kommandoer.
         dispatcher.register(Commands.literal("p").redirect(dispatcher.getRoot().getChild("politi")));
+        // Direkte alias for politiets teleportkommando.
+        dispatcher.register(Commands.literal("ptp").redirect(
+            dispatcher.getRoot().getChild("politi").getChild("tp")));
 
     }
 
