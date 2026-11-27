@@ -37,6 +37,10 @@ public final class PoliceData extends SavedData {
     private int jailAreaMinX, jailAreaMinY, jailAreaMinZ, jailAreaMaxX, jailAreaMaxY, jailAreaMaxZ;
     private boolean jailAreaConfigured;
     private boolean nightLockdown;
+    private boolean policeBaseConfigured;
+    private String policeBaseDimension = "";
+    private double policeBaseX, policeBaseY, policeBaseZ;
+    private float policeBaseYaw, policeBasePitch;
     private long lastScheduleTick = Long.MIN_VALUE;
     private final Set<String> activeAlarms = new HashSet<>();
     private final List<String> alarmHistory = new ArrayList<>();
@@ -116,6 +120,13 @@ public final class PoliceData extends SavedData {
         data.jailAreaMinX=tag.getInt("JailAreaMinX"); data.jailAreaMinY=tag.getInt("JailAreaMinY"); data.jailAreaMinZ=tag.getInt("JailAreaMinZ");
         data.jailAreaMaxX=tag.getInt("JailAreaMaxX"); data.jailAreaMaxY=tag.getInt("JailAreaMaxY"); data.jailAreaMaxZ=tag.getInt("JailAreaMaxZ");
         data.nightLockdown = tag.getBoolean("NightLockdown");
+        data.policeBaseConfigured = tag.getBoolean("PoliceBaseConfigured");
+        data.policeBaseDimension = tag.getString("PoliceBaseDimension");
+        data.policeBaseX = tag.getDouble("PoliceBaseX");
+        data.policeBaseY = tag.getDouble("PoliceBaseY");
+        data.policeBaseZ = tag.getDouble("PoliceBaseZ");
+        data.policeBaseYaw = tag.getFloat("PoliceBaseYaw");
+        data.policeBasePitch = tag.getFloat("PoliceBasePitch");
         ListTag alarms = tag.getList("AlarmHistory", 8);
         for (int i = 0; i < alarms.size(); i++) data.alarmHistory.add(alarms.getString(i));
         ListTag logList = tag.getList("PoliceLog", 10);
@@ -200,6 +211,13 @@ public final class PoliceData extends SavedData {
         tag.putInt("JailAreaMinX",jailAreaMinX); tag.putInt("JailAreaMinY",jailAreaMinY); tag.putInt("JailAreaMinZ",jailAreaMinZ);
         tag.putInt("JailAreaMaxX",jailAreaMaxX); tag.putInt("JailAreaMaxY",jailAreaMaxY); tag.putInt("JailAreaMaxZ",jailAreaMaxZ);
         tag.putBoolean("NightLockdown",nightLockdown);
+        tag.putBoolean("PoliceBaseConfigured", policeBaseConfigured);
+        tag.putString("PoliceBaseDimension", policeBaseDimension);
+        tag.putDouble("PoliceBaseX", policeBaseX);
+        tag.putDouble("PoliceBaseY", policeBaseY);
+        tag.putDouble("PoliceBaseZ", policeBaseZ);
+        tag.putFloat("PoliceBaseYaw", policeBaseYaw);
+        tag.putFloat("PoliceBasePitch", policeBasePitch);
         ListTag alarms = new ListTag();
         for (String alarm : alarmHistory) alarms.add(net.minecraft.nbt.StringTag.valueOf(alarm));
         tag.put("AlarmHistory", alarms);
@@ -226,6 +244,25 @@ public final class PoliceData extends SavedData {
         });
         tag.put("Cells",cellList);
         return tag;
+    }
+
+    public void setPoliceBase(ServerPlayer player) {
+        policeBaseConfigured = true;
+        policeBaseDimension = player.level().dimension().location().toString();
+        policeBaseX = player.getX(); policeBaseY = player.getY(); policeBaseZ = player.getZ();
+        policeBaseYaw = player.getYRot(); policeBasePitch = player.getXRot();
+        setDirty();
+    }
+
+    public boolean hasPoliceBase() { return policeBaseConfigured; }
+
+    public boolean teleportToPoliceBase(ServerPlayer player) {
+        if (!policeBaseConfigured) return false;
+        ResourceKey<Level> key = ResourceKey.create(Registries.DIMENSION, ResourceLocation.parse(policeBaseDimension));
+        ServerLevel level = player.getServer().getLevel(key);
+        if (level == null) return false;
+        player.teleportTo(level, policeBaseX, policeBaseY, policeBaseZ, Set.of(), policeBaseYaw, policeBasePitch);
+        return true;
     }
 
     public void recordLastActive(UUID id) {
