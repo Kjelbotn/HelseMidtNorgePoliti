@@ -540,10 +540,14 @@ public final class PoliceData extends SavedData {
     }
 
 
-    private static ItemStack createOrangeLeatherArmor(net.minecraft.world.item.Item item) {
+    private static ItemStack createOrangeLeatherArmor(net.minecraft.world.item.Item item,
+            net.minecraft.core.HolderLookup.Provider registries) {
         ItemStack armor = new ItemStack(item);
         armor.set(net.minecraft.core.component.DataComponents.DYED_COLOR,
             new net.minecraft.world.item.component.DyedItemColor(0xFF8000));
+        var bindingCurse = registries.lookupOrThrow(net.minecraft.core.registries.Registries.ENCHANTMENT)
+            .getOrThrow(net.minecraft.world.item.enchantment.Enchantments.BINDING_CURSE);
+        armor.enchant(bindingCurse, 1);
         return armor;
     }
 
@@ -585,10 +589,10 @@ public final class PoliceData extends SavedData {
         inventory.setItem(6, createWaterBottle()); // Hotbar slot 7
         inventory.setItem(7, createWaterBottle()); // Hotbar slot 8
         // Orange leather uniform, equipped from head to toe.
-        inventory.setItem(36, createOrangeLeatherArmor(Items.LEATHER_BOOTS));
-        inventory.setItem(37, createOrangeLeatherArmor(Items.LEATHER_LEGGINGS));
-        inventory.setItem(38, createOrangeLeatherArmor(Items.LEATHER_CHESTPLATE));
-        inventory.setItem(39, createOrangeLeatherArmor(Items.LEATHER_HELMET));
+        inventory.setItem(36, createOrangeLeatherArmor(Items.LEATHER_BOOTS, player.registryAccess()));
+        inventory.setItem(37, createOrangeLeatherArmor(Items.LEATHER_LEGGINGS, player.registryAccess()));
+        inventory.setItem(38, createOrangeLeatherArmor(Items.LEATHER_CHESTPLATE, player.registryAccess()));
+        inventory.setItem(39, createOrangeLeatherArmor(Items.LEATHER_HELMET, player.registryAccess()));
         inventory.setChanged();
         player.inventoryMenu.broadcastChanges();
         player.containerMenu.broadcastChanges();
