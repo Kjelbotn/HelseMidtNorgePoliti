@@ -532,6 +532,28 @@ public final class PoliceEvents {
                         context.getSource().getTextName(), "Kontrollert av politiet");
                     return Command.SINGLE_SUCCESS;
                 }))));
+        dispatcher.register(Commands.literal("politi")
+            .then(Commands.literal("base")
+                .requires(source -> PoliceData.get(source.getServer()).isPolice(source))
+                .executes(context -> {
+                    ServerPlayer officer = context.getSource().getPlayerOrException();
+                    PoliceData data = PoliceData.get(context.getSource().getServer());
+                    if (!data.teleportToPoliceBase(officer)) {
+                        context.getSource().sendFailure(Component.literal("Politistasjonens baseposisjon er ikke satt ennå."));
+                        return 0;
+                    }
+                    context.getSource().sendSuccess(() -> Component.literal("§aDu er teleportert til politistasjonen."), false);
+                    return Command.SINGLE_SUCCESS;
+                })
+                .then(Commands.literal("set")
+                    .requires(source -> source.hasPermission(4))
+                    .executes(context -> {
+                        ServerPlayer officer = context.getSource().getPlayerOrException();
+                        PoliceData.get(context.getSource().getServer()).setPoliceBase(officer);
+                        context.getSource().sendSuccess(() -> Component.literal("§aPolitistasjonens baseposisjon er lagret."), true);
+                        return Command.SINGLE_SUCCESS;
+                    }))));
+
         // Kort alias for alle /politi-kommandoer.
         dispatcher.register(Commands.literal("p").redirect(dispatcher.getRoot().getChild("politi")));
         // Direkte alias for politiets teleportkommando.
