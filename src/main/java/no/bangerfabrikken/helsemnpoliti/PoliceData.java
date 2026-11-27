@@ -502,6 +502,14 @@ public final class PoliceData extends SavedData {
         }
     }
 
+
+    private static ItemStack createWaterBottle() {
+        ItemStack bottle = new ItemStack(Items.POTION);
+        bottle.set(net.minecraft.core.component.DataComponents.POTION_CONTENTS,
+            new net.minecraft.world.item.alchemy.PotionContents(net.minecraft.world.item.alchemy.Potions.WATER));
+        return bottle;
+    }
+
     public void jail(ServerPlayer player, int minutes, String reason, String officer) {
         long releaseAt = System.currentTimeMillis() + minutes * 60_000L;
         String returnDimension = player.level().dimension().location().toString();
@@ -529,9 +537,9 @@ public final class PoliceData extends SavedData {
 
         // Basic food and water for the prison sentence: hotbar slots are zero-based.
         inventory.setItem(8, new ItemStack(Items.BREAD, 10)); // Hotbar slot 9
-        inventory.setItem(5, new ItemStack(Items.WATER_BUCKET)); // Hotbar slot 6
-        inventory.setItem(6, new ItemStack(Items.WATER_BUCKET)); // Hotbar slot 7
-        inventory.setItem(7, new ItemStack(Items.WATER_BUCKET)); // Hotbar slot 8
+        inventory.setItem(5, createWaterBottle()); // Hotbar slot 6
+        inventory.setItem(6, createWaterBottle()); // Hotbar slot 7
+        inventory.setItem(7, createWaterBottle()); // Hotbar slot 8
         inventory.setChanged();
         player.inventoryMenu.broadcastChanges();
         player.containerMenu.broadcastChanges();
