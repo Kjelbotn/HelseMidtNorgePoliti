@@ -544,7 +544,7 @@ public final class PoliceData extends SavedData {
             net.minecraft.core.HolderLookup.Provider registries) {
         ItemStack armor = new ItemStack(item);
         armor.set(net.minecraft.core.component.DataComponents.DYED_COLOR,
-            new net.minecraft.world.item.component.DyedItemColor(0xFF8000));
+            new net.minecraft.world.item.component.DyedItemColor(0xFF8000, true));
         var bindingCurse = registries.lookupOrThrow(net.minecraft.core.registries.Registries.ENCHANTMENT)
             .getOrThrow(net.minecraft.world.item.enchantment.Enchantments.BINDING_CURSE);
         armor.enchant(bindingCurse, 1);
