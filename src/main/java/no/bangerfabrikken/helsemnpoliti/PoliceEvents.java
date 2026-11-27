@@ -681,7 +681,7 @@ public final class PoliceEvents {
      * when the player is a registered officer currently on duty. The FTB API
      * check ensures this handler does not override unrelated cancellations.
      */
-    @SubscribeEvent(priority = EventPriority.NORMAL)
+    @SubscribeEvent(priority = EventPriority.NORMAL, receiveCanceled = true)
     public static void onOnDutyPoliceClaimDoorInteract(PlayerInteractEvent.RightClickBlock event) {
         if (!(event.getEntity() instanceof ServerPlayer player) || !event.isCanceled()) return;
 
