@@ -104,6 +104,8 @@ public final class PoliceEvents {
                 source.sendSuccess(() -> Component.literal("§b/politi radio <melding> §7– sender melding på politiets samband"), false);
                 if (PoliceData.get(source.getServer()).isPolice(source)) {
                     source.sendSuccess(() -> Component.literal("§b/p batong §7– hent politibatong med Knockback X"), false);
+                    source.sendSuccess(() -> Component.literal("§b/p base §7– dra til politistasjonen"), false);
+                    if (source.hasPermission(4)) source.sendSuccess(() -> Component.literal("§b/p base set §7– lagre politistasjonens posisjon"), false);
                     source.sendSuccess(() -> Component.literal("§e/jail <spiller> <minutter> <grunn> §7– sett i fengsel"), false);
                     source.sendSuccess(() -> Component.literal("§e/unjail <spiller> §7– løslat en innsatt"), false);
                     source.sendSuccess(() -> Component.literal("§e/jaillist §7– oversikt over innsatte"), false);
