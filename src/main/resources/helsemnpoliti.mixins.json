@@ -1,0 +1,13 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "no.bangerfabrikken.helsemnpoliti.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "refmap": "helsemnpoliti.refmap.json",
+  "mixins": [
+    "ClaimedChunkManagerMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}
