@@ -103,7 +103,7 @@ public final class PoliceEvents {
                 source.sendSuccess(() -> Component.literal("§b/politi status §7– viser pålogget politi og innsatte"), false);
                 source.sendSuccess(() -> Component.literal("§b/politi radio <melding> §7– sender melding på politiets samband"), false);
                 if (PoliceData.get(source.getServer()).isPolice(source)) {
-                    source.sendSuccess(() -> Component.literal("§b/p batong §7– hent politibatong med Knockback II"), false);
+                    source.sendSuccess(() -> Component.literal("§b/p batong §7– hent politibatong med Knockback X"), false);
                     source.sendSuccess(() -> Component.literal("§e/jail <spiller> <minutter> <grunn> §7– sett i fengsel"), false);
                     source.sendSuccess(() -> Component.literal("§e/unjail <spiller> §7– løslat en innsatt"), false);
                     source.sendSuccess(() -> Component.literal("§e/jaillist §7– oversikt over innsatte"), false);
@@ -550,16 +550,16 @@ public final class PoliceEvents {
                     var knockback = officer.registryAccess()
                         .lookupOrThrow(net.minecraft.core.registries.Registries.ENCHANTMENT)
                         .getOrThrow(net.minecraft.world.item.enchantment.Enchantments.KNOCKBACK);
-                    baton.enchant(knockback, 2);
+                    baton.enchant(knockback, 10);
 
                     if (!officer.getInventory().add(baton)) {
                         officer.drop(baton, false);
                     }
                     PoliceData.get(context.getSource().getServer()).logAction(
                         "Politibatong utlevert", officer.getUUID(), officer.getGameProfile().getName(),
-                        officer.getGameProfile().getName(), "Knockback II");
+                        officer.getGameProfile().getName(), "Knockback X");
                     officer.sendSystemMessage(Component.literal(
-                        "§aDu har fått en politibatong med Knockback II."));
+                        "§aDu har fått en politibatong med Knockback X."));
                     return Command.SINGLE_SUCCESS;
                 })));
 
