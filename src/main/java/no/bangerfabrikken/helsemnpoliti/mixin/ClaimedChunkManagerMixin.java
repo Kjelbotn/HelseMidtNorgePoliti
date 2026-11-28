@@ -7,7 +7,6 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.core.BlockPos;
-import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.level.block.DoorBlock;
 import net.minecraft.world.level.block.TrapDoorBlock;
 import net.minecraft.world.level.block.FenceGateBlock;
@@ -41,9 +40,6 @@ public abstract class ClaimedChunkManagerMixin {
 
         PoliceData data = PoliceData.get(player.getServer());
         if (!data.isOnDuty(player.getUUID()) || data.isJailed(player.getUUID())) return;
-
-        // Do not let a block held in hand bypass claim protection for placement.
-        if (player.getItemInHand(hand).getItem() instanceof BlockItem) return;
 
         var block = player.level().getBlockState(pos).getBlock();
         if (block instanceof DoorBlock || block instanceof TrapDoorBlock || block instanceof FenceGateBlock) {
